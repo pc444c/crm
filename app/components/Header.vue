@@ -39,58 +39,7 @@ const auth = useAuthStore();
 const toast = useToast();
 
 // Определяем пункты меню в зависимости от роли пользователя
-const items = computed(() => {
-  const role = auth.getRole;
 
-  if (role === "admin") {
-    return [
-      [
-        {
-          label: "Админ-панель",
-          icon: "lucide:settings",
-          to: "/admin",
-        },
-        {
-          label: "Пользователи",
-          icon: "lucide:users",
-          to: "/admin/users",
-        },
-        {
-          label: "Теги",
-          icon: "lucide:tag",
-          to: "/admin/set_tags",
-        },
-        {
-          label: "Записи",
-          icon: "lucide:file-text",
-          to: "/admin/records",
-        },
-        {
-          label: "Базы",
-          icon: "lucide:database",
-          to: "/admin/databases",
-        },
-      ],
-    ];
-  } else if (role === "user") {
-    return [
-      [
-        {
-          label: "Работа",
-          icon: "lucide:phone-call",
-          to: "/user",
-        },
-        {
-          label: "Статистика",
-          icon: "lucide:chart-pie",
-          to: "/user/statistic",
-        },
-      ],
-    ];
-  }
-
-  return [[]]; // Пустое меню для неавторизованных пользователей
-});
 
 // Функция для выхода из системы
 async function handleLogout() {

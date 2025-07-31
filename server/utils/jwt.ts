@@ -1,4 +1,5 @@
 import jwt from "jsonwebtoken";
+import { getCookie } from "h3";
 
 // Типы для пользовательских данных в токене
 export interface TokenPayload {
@@ -48,4 +49,18 @@ export function decodeToken(token: string): TokenPayload | null {
   } catch (_error) {
     return null;
   }
+}
+
+/**
+ * Проверяет авторизацию пользователя по cookies
+ * @param event H3Event объект
+ * @returns Данные авторизованного пользователя или null
+ */
+export function verifyAuth(event: any): TokenPayload | null {
+  // Получаем токен из cookie
+  const token = getCookie(event, "auth_token");
+  if (!token) return null;
+
+  // Проверяем токен
+  return verifyToken(token);
 }

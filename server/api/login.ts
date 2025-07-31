@@ -33,6 +33,15 @@ export default defineEventHandler(async (event) => {
     };
   }
 
+  // Обновляем статус пользователя на онлайн
+  await db
+    .update(users)
+    .set({
+      last_activity: new Date(),
+      is_online: "online",
+    })
+    .where(eq(users.id, user.id));
+
   // Создаем JWT токен с данными пользователя
   const token = createToken({
     id: user.id,

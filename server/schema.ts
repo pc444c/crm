@@ -11,6 +11,8 @@ export const users = pgTable("users", {
   password: varchar({ length: 255 }).notNull(),
   role: varchar({ length: 50 }).default("user").notNull(), // например, можно добавить роль
   created_at: timestamp("created_at", { precision: 3 }).defaultNow().notNull(),
+  last_activity: timestamp("last_activity", { precision: 3 }), // последняя активность пользователя
+  is_online: varchar({ length: 10 }).default("offline").notNull(), // статус онлайн (online/offline)
 });
 // databases.ts
 export const databases = pgTable("databases", {

@@ -11,54 +11,103 @@
       <admin-stat-user-online class="w-full" />
     </section>
     <section class="mb-16">
-         <USeparator
+      <USeparator
         color="primary"
         label="Статистика по звонкам"
         class="col-span-1 md:col-span-3 mb-4"
       />
-      <BarChart
-        :key="colorMode.value"
-        :data="RevenueData"
-        :height="300"
-        :categories="RevenueCategories"
-        :y-axis="['desktop']"
-        :x-num-ticks="6"
-        :radius="4"
-        :y-grid-line="true"
-        :x-formatter="xFormatter"
-        :legend-position="LegendPosition.Top"
-        :hide-legend="false"
-      />
+      <div>
+        <UButton
+          icon="i-heroicons-arrow-path"
+          color="primary"
+          class="mb-4"
+          label="Обновить статистику"
+          @click="() => refresh()"
+        />
+        <BarChart
+          v-if="RevenueData.length > 0"
+          :key="colorMode.value"
+          :data="RevenueData"
+          :height="300"
+          :categories="RevenueCategories"
+          :y-axis="['desktop']"
+          :x-num-ticks="6"
+          :radius="4"
+          :y-grid-line="true"
+          :x-formatter="xFormatter"
+          :hide-legend="false"
+        />
+        <div v-else class="flex justify-center items-center h-80">
+          <UIcon
+            name="i-heroicons-information-circle"
+            class="text-blue-500 mr-2"
+          />
+          <p>Нет данных для отображения</p>
+        </div>
+      </div>
     </section>
-    <NuxtLink
-      to="/admin/apitd"
-      class="text-blue-500 hover:underline mb-4"
-      >LINK LINK LINK</NuxtLink>
+    <NuxtLink to="/admin/apitd" class="text-blue-500 hover:underline mb-4"
+      >LINK LINK LINK</NuxtLink
+    >
   </div>
 </template>
 
 <script lang="ts" setup>
 const colorMode = useColorMode();
 
-const RevenueData = [
-  { month: "НДЗ", desktop: 300 },
-  { month: "СЛИВ", desktop: 250 },
-  { month: "ПУСТОЙ", desktop: 530 },
-  { month: "МРАЗЬ", desktop: 124 },
-  { month: "НИЩИЙ", desktop: 800 },
-  { month: "ПЕРЕЗВОН", desktop: 2450 },
-  { month: "ПЕРЕДАТЬ", desktop: 5200 },
-];
+// Определение типа для данных статистики
+interface CallStat {
+  status: string;
+  count: number;
+}
+
+interface ApiResponse {
+  status: string;
+  data: CallStat[];
+  message?: string;
+}
+
+const { data: callStatsResponse, refresh } = await useFetch<ApiResponse>(
+  "/api/admin/getCallStats"
+);
+
+// Обработка данных для отображения на графике
+const RevenueData = computed(() => {
+  if (
+    !callStatsResponse.value ||
+    callStatsResponse.value.status !== "success"
+  ) {
+    return [];
+  }
+
+  // Преобразуем данные из API в формат для графика
+  return callStatsResponse.value.data.map((item: CallStat) => ({
+    month: item.status || "Без тега",
+    desktop: item.count,
+  }));
+});
 
 const RevenueCategories = computed(() => ({
   desktop: {
-    name: "Количество звонков со статусом",
+    name: "Количество звонков по статусу",
     color: "#22c55e",
   },
 }));
 
-const xFormatter = (i: number): string => `${RevenueData[i]?.month}`;
+const xFormatter = (i: number): string => {
+  return RevenueData.value[i]?.month || "";
+};
 
+// Обновляем данные каждые 30 секунд
+onMounted(() => {
+  const intervalId = setInterval(() => {
+    refresh();
+  }, 30000);
+
+  onBeforeUnmount(() => {
+    clearInterval(intervalId);
+  });
+});
 </script>
 
 <style lang="scss" scoped></style>
