@@ -244,8 +244,9 @@ async function loadCalls() {
     });
 
     if (response.success) {
-      calls.value = response.records || [];
-      totalRecords.value = response.total || 0;
+      // Фильтруем записи, исключая те, у которых tag = "no used"
+      calls.value = (response.records || []).filter(call => call.tag !== "no used" && call.tag !== "no used");
+      totalRecords.value = calls.value.length; // Обновляем общее количество после фильтрации
 
       if (response.tags && response.tags.length > 0) {
         tags.value = response.tags;

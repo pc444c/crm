@@ -1,52 +1,31 @@
-<template>
-  <UCard class="bg-neutral-800 h-full text-white">
-    <div class="flex flex-col h-full">
-      <USeparator color="primary" label="Скрипты для общения" />
-      <p class="text-gray-300 text-sm my-2">
-        Нажмите на скрипт, чтобы увидеть полный текст
-      </p>
-
-      <div class="flex flex-col gap-2 flex-grow overflow-y-auto">
-        <UModal v-for="(i, idx) in scripts" :key="idx" title="Скрипт общения">
-          <UButton
-            block
-            color="secondary"
-            size="md"
-            class="text-left truncate"
-            icon="i-heroicons-document-text"
-          >
-            {{ i.title }}
-          </UButton>
-
-          <template #body>
-            <div class="p-4">
-              <h3 class="font-bold mb-2">{{ i.title }}</h3>
-              <div class="text-gray-700 whitespace-pre-line">
-                {{ i.text }}
-              </div>
-
-              <div class="mt-4 flex justify-end">
-                <UButton
-                  color="primary"
-                  icon="i-heroicons-clipboard"
-                  @click="copyToClipboard(i.text)"
-                >
-                  Копировать
-                </UButton>
-              </div>
-            </div>
-          </template>
-        </UModal>
-      </div>
-    </div>
+﻿<template>
+  <UCard>
+    <USlideover
+      :title="`Скрипт: ${ScriptNow ? ScriptNow.title : 'Выберите скрипт'}`"
+      v-for="script in scripts"
+      :key="script.title"
+    >
+      <u-button
+        class="w-full mb-2"
+        size="xl"
+        color="secondary"
+        icon="i-heroicons-chat-bubble-left-right"
+        @click="checkInfo(script)"
+      >
+        {{ script.title }}
+      </u-button>
+      <template #body>
+        <Placeholder class="h-full m-4" />
+        <span class="text-gray-100 px-4 py-2 rounded block bg-neutral-900">
+          {{ ScriptNow ? ScriptNow.text : "Выберите скрипт для просмотра" }}
+        </span>
+      </template>
+    </USlideover>
   </UCard>
 </template>
 
 <script lang="ts" setup>
-import { ref } from "vue";
-
-const toast = useToast();
-
+const ScriptNow = ref(null);
 const scripts = ref([
   { title: "Приветствие", text: "Здравствуйте, чем могу помочь?" },
   { title: "Прощание", text: "Спасибо за обращение, до свидания!" },
@@ -59,24 +38,11 @@ const scripts = ref([
   { title: "Обратная связь", text: "Будем рады вашему отзыву." },
   { title: "Контакты", text: "Наши контакты: 123-456-7890." },
 ]);
-
-// Функция копирования текста в буфер обмена
-const copyToClipboard = async (text: string) => {
-  try {
-    await navigator.clipboard.writeText(text);
-    toast.add({
-      title: "Скопировано",
-      description: "Текст скопирован в буфер обмена",
-      color: "success",
-    });
-  } catch (err) {
-    toast.add({
-      title: "Ошибка",
-      description: "Не удалось скопировать текст",
-      color: "error",
-    });
-    console.error("Ошибка при копировании:", err);
-  }
+const checkInfo = (script) => {
+  ScriptNow.value = script;
+  // Здесь можно добавить логику для обработки текста скрипта
+  // Например, вставить текст в активное поле ввода
+  console.log("Текст скрипта:", script.text);
 };
 </script>
 

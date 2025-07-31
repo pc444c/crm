@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <div class="flex flex-col lg:flex-row gap-4 w-full">
     <!-- Левая карточка           <UButton
           v-if="currentRecord"
@@ -285,6 +285,12 @@ const fetchRecord = async () => {
       currentRecord.value = response.record;
       commentText.value = response.record.description || "";
       continueWorking.value = false;
+
+      toast.add({
+        title: "Успешно",
+        description: "Запись загружена",
+        color: "success",
+      });
     } else {
       toast.add({
         title: "Информация",
@@ -293,6 +299,7 @@ const fetchRecord = async () => {
         color: "warning",
       });
       currentRecord.value = null;
+      continueWorking.value = false; // Сбрасываем флаг, чтобы показать кнопку "Начать работу"
     }
   } catch (error) {
     console.error("Ошибка при получении записи:", error);
@@ -335,7 +342,7 @@ const _fetchNextRecord = async () => {
       body: {
         userId: auth.getId,
         currentRecordId: currentRecord.value.id,
-        newTag: currentRecord.value.tag || "no used", // По умолчанию, если тег не был изменен
+        newTag: currentRecord.value.tag || "no used",
       },
     });
 
@@ -443,7 +450,7 @@ const confirmTagChange = async () => {
       toast.add({
         title: "Готово",
         description:
-          "Запись обработана. Нажмите 'Продолжить работать' для следующей записи",
+          "Запись обработана. Автоматически загружаю следующую запись...",
         color: "success",
         timeout: 5000,
       });
@@ -451,8 +458,20 @@ const confirmTagChange = async () => {
       // Обновляем список звонков через событие
       window.dispatchEvent(new CustomEvent("call-list-updated"));
 
-      // Загружаем новую запись после подтверждения тега
+      // Текущая запись больше не нужна, загружаем новую запись
       await _fetchNextRecord();
+
+      // Если после получения следующей записи она отсутствует, сразу загружаем новую запись
+      if (!currentRecord.value) {
+        toast.add({
+          title: "Информация",
+          description: "Нет следующей записи, запрашиваю новую",
+          color: "info",
+        });
+        // Устанавливаем флаг и пытаемся загрузить новую запись
+        continueWorking.value = false; // Сначала сбрасываем, чтобы правильно показать интерфейс
+        await fetchRecord(); // Пытаемся загрузить новую запись
+      }
     } else {
       throw new Error(response?.message || "Не удалось назначить тег");
     }
@@ -550,7 +569,8 @@ onMounted(async () => {
   // Если все в порядке, продолжаем инициализацию
   if (auth.isAuthenticated) {
     getTags();
-    fetchRecord();
+    // Не загружаем запись автоматически, пользователь должен нажать "Начать работу"
+    // fetchRecord();
   }
 });
 </script>

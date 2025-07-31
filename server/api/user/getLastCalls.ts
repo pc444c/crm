@@ -1,11 +1,11 @@
-import { db } from "~~/server";
+﻿import { db } from "~~/server";
 import { users, records, tags } from "~~/server/schema";
 import { eq, sql, and, gte, lte, asc, desc } from "drizzle-orm";
 import { defineEventHandler, readBody } from "h3";
 
 export default defineEventHandler(async (event) => {
   try {
-    // Получаем параметры из тела запроса
+    // РџРѕР»СѓС‡Р°РµРј РїР°СЂР°РјРµС‚СЂС‹ РёР· С‚РµР»Р° Р·Р°РїСЂРѕСЃР°
     const body = await readBody(event);
     const {
       userId,
@@ -21,47 +21,52 @@ export default defineEventHandler(async (event) => {
     if (!userId) {
       return {
         success: false,
-        error: "ID пользователя не указан",
+        error: "ID РїРѕР»СЊР·РѕРІР°С‚РµР»СЏ РЅРµ СѓРєР°Р·Р°РЅ",
       };
     }
 
-    // Проверка валидности ID пользователя
+    // РџСЂРѕРІРµСЂРєР° РІР°Р»РёРґРЅРѕСЃС‚Рё ID РїРѕР»СЊР·РѕРІР°С‚РµР»СЏ
     const userIdNum = parseInt(userId);
     if (isNaN(userIdNum)) {
       return {
         success: false,
-        error: "Некорректный ID пользователя",
+        error: "РќРµРєРѕСЂСЂРµРєС‚РЅС‹Р№ ID РїРѕР»СЊР·РѕРІР°С‚РµР»СЏ",
       };
     }
 
-    // Получаем все доступные теги
+    // РџРѕР»СѓС‡Р°РµРј РІСЃРµ РґРѕСЃС‚СѓРїРЅС‹Рµ С‚РµРіРё
     const tagsList = await db.select().from(tags).execute();
 
-    // Строим условия для запроса
-    const conditions = [eq(records.user_id, userIdNum)];
+    // РЎС‚СЂРѕРёРј СѓСЃР»РѕРІРёСЏ РґР»СЏ Р·Р°РїСЂРѕСЃР°
+    // РќР°С…РѕРґРёРј РІСЃРµ Р·Р°РїРёСЃРё, Сѓ РєРѕС‚РѕСЂС‹С… С‚РµРі РЅРµ "no used",
+    // СЌС‚Рѕ Р±СѓРґСѓС‚ РІСЃРµ РѕР±СЂР°Р±РѕС‚Р°РЅРЅС‹Рµ Р·Р°РїРёСЃРё РІ СЃРёСЃС‚РµРјРµ
+    const conditions = [];
 
-    // Добавляем фильтр по статусу, если указан
+    // РџРѕ СѓРјРѕР»С‡Р°РЅРёСЋ РёСЃРєР»СЋС‡Р°РµРј Р·Р°РїРёСЃРё СЃРѕ СЃС‚Р°С‚СѓСЃРѕРј "no used"
+    conditions.push(sql`${records.tag} != 'no used'`);
+
+    // Р”РѕР±Р°РІР»СЏРµРј С„РёР»СЊС‚СЂ РїРѕ СЃС‚Р°С‚СѓСЃСѓ, РµСЃР»Рё СѓРєР°Р·Р°РЅ
     if (filterStatus) {
       conditions.push(eq(records.tag, filterStatus));
     }
 
-    // Добавляем фильтрацию по дате, если указано
+    // Р”РѕР±Р°РІР»СЏРµРј С„РёР»СЊС‚СЂР°С†РёСЋ РїРѕ РґР°С‚Рµ, РµСЃР»Рё СѓРєР°Р·Р°РЅРѕ
     if (dateFrom) {
       conditions.push(gte(records.status_updated_at, new Date(dateFrom)));
     }
 
     if (dateTo) {
-      // Добавляем 1 день к конечной дате, чтобы включить весь день
+      // Р”РѕР±Р°РІР»СЏРµРј 1 РґРµРЅСЊ Рє РєРѕРЅРµС‡РЅРѕР№ РґР°С‚Рµ, С‡С‚РѕР±С‹ РІРєР»СЋС‡РёС‚СЊ РІРµСЃСЊ РґРµРЅСЊ
       const endDate = new Date(dateTo);
       endDate.setDate(endDate.getDate() + 1);
       conditions.push(lte(records.status_updated_at, endDate));
     }
 
-    // Строим базовый запрос с условиями
-    // В Drizzle ORM нужно сразу определить сортировку
+    // РЎС‚СЂРѕРёРј Р±Р°Р·РѕРІС‹Р№ Р·Р°РїСЂРѕСЃ СЃ СѓСЃР»РѕРІРёСЏРјРё
+    // Р’ Drizzle ORM РЅСѓР¶РЅРѕ СЃСЂР°Р·Сѓ РѕРїСЂРµРґРµР»РёС‚СЊ СЃРѕСЂС‚РёСЂРѕРІРєСѓ
     let query;
 
-    // Применяем сортировку в зависимости от выбранного поля
+    // РџСЂРёРјРµРЅСЏРµРј СЃРѕСЂС‚РёСЂРѕРІРєСѓ РІ Р·Р°РІРёСЃРёРјРѕСЃС‚Рё РѕС‚ РІС‹Р±СЂР°РЅРЅРѕРіРѕ РїРѕР»СЏ
     if (sortBy === "dateAssign") {
       query = db
         .select()
@@ -85,7 +90,7 @@ export default defineEventHandler(async (event) => {
           sortOrder === "desc" ? desc(records.phone) : asc(records.phone)
         );
     } else {
-      // По умолчанию сортировка по дате статуса
+      // РџРѕ СѓРјРѕР»С‡Р°РЅРёСЋ СЃРѕСЂС‚РёСЂРѕРІРєР° РїРѕ РґР°С‚Рµ СЃС‚Р°С‚СѓСЃР°
       query = db
         .select()
         .from(records)
@@ -97,21 +102,21 @@ export default defineEventHandler(async (event) => {
         );
     }
 
-    // Выполняем запрос с пагинацией
+    // Р’С‹РїРѕР»РЅСЏРµРј Р·Р°РїСЂРѕСЃ СЃ РїР°РіРёРЅР°С†РёРµР№
     const recordsList = await query
       .limit(parseInt(limit.toString()))
       .offset(parseInt(offset.toString()))
       .execute();
 
-    // Получаем общее количество записей для пагинации
+    // РџРѕР»СѓС‡Р°РµРј РѕР±С‰РµРµ РєРѕР»РёС‡РµСЃС‚РІРѕ Р·Р°РїРёСЃРµР№ РґР»СЏ РїР°РіРёРЅР°С†РёРё СЃ СѓС‡РµС‚РѕРј РІСЃРµС… С„РёР»СЊС‚СЂРѕРІ
     const countQuery = await db
       .select({ count: sql`count(*)`.mapWith(Number) })
       .from(records)
-      .where(eq(records.user_id, userIdNum));
+      .where(and(...conditions));
 
     const total = countQuery[0]?.count || 0;
 
-    // Обогащаем записи информацией о тегах
+    // РћР±РѕРіР°С‰Р°РµРј Р·Р°РїРёСЃРё РёРЅС„РѕСЂРјР°С†РёРµР№ Рѕ С‚РµРіР°С…
     const enrichedRecords = recordsList.map((record) => {
       const tagInfo = tagsList.find((tag) => tag.name === record.tag);
       return {
@@ -134,10 +139,10 @@ export default defineEventHandler(async (event) => {
       tags: tagsList,
     };
   } catch (error) {
-    console.error("Ошибка при получении списка звонков:", error);
+    console.error("РћС€РёР±РєР° РїСЂРё РїРѕР»СѓС‡РµРЅРёРё СЃРїРёСЃРєР° Р·РІРѕРЅРєРѕРІ:", error);
     return {
       success: false,
-      error: "Ошибка при получении списка звонков",
+      error: "РћС€РёР±РєР° РїСЂРё РїРѕР»СѓС‡РµРЅРёРё СЃРїРёСЃРєР° Р·РІРѕРЅРєРѕРІ",
     };
   }
 });

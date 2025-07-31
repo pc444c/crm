@@ -47,12 +47,24 @@ export default defineEventHandler(async (event) => {
       };
     }
 
-    // Обновляем запись с новым тегом
+    // БУДУЩЕЕ УЛУЧШЕНИЕ: Если добавим поле processed_by в схему records,
+    // мы сможем сохранять ID пользователя, который обработал запись:
+    //
+    // const currentRecord = await db
+    //  .select()
+    //  .from(records)
+    //  .where(eq(records.id, recordId))
+    //  .limit(1);
+    // const currentUserId = currentRecord[0].user_id;
+    // Добавить в set: processed_by: currentUserId
+
+    // Обновляем запись с новым тегом и освобождаем её от пользователя
     const [updatedRecord] = await db
       .update(records)
       .set({
         tag: tagName,
         status_updated_at: new Date(),
+        user_id: null, // Освобождаем запись от пользователя
       })
       .where(eq(records.id, recordId))
       .returning();
