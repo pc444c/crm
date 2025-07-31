@@ -142,7 +142,9 @@
     <template #body>
       <div class="p-4">
         <div class="flex flex-col items-center justify-center gap-4 mb-6">
-          <span class="text-lg">Вы уверены, что хотите выбрать этот статус?</span>
+          <span class="text-lg"
+            >Вы уверены, что хотите выбрать этот статус?</span
+          >
           <div
             :style="{ backgroundColor: ModalData.color }"
             class="p-2 px-4 text-white rounded font-medium"
@@ -294,14 +296,18 @@ const fetchRecord = async () => {
     }
   } catch (error) {
     console.error("Ошибка при получении записи:", error);
-    
+
     // Проверка на ошибку USER_NOT_EXISTS
-    if (error.data && (error.data.code === "USER_NOT_EXISTS" || error.data.data?.errorCode === "USER_NOT_EXISTS")) {
+    if (
+      error.data &&
+      (error.data.code === "USER_NOT_EXISTS" ||
+        error.data.data?.errorCode === "USER_NOT_EXISTS")
+    ) {
       auth.setErrorCode("USER_NOT_EXISTS");
       navigateTo("/?error=USER_NOT_EXISTS");
       return;
     }
-    
+
     toast.add({
       title: "Ошибка",
       description: "Не удалось получить запись",
@@ -356,14 +362,18 @@ const _fetchNextRecord = async () => {
     }
   } catch (error) {
     console.error("Ошибка при получении записи:", error);
-    
+
     // Проверка на ошибку USER_NOT_EXISTS
-    if (error.data && (error.data.code === "USER_NOT_EXISTS" || error.data.data?.errorCode === "USER_NOT_EXISTS")) {
+    if (
+      error.data &&
+      (error.data.code === "USER_NOT_EXISTS" ||
+        error.data.data?.errorCode === "USER_NOT_EXISTS")
+    ) {
       auth.setErrorCode("USER_NOT_EXISTS");
       navigateTo("/?error=USER_NOT_EXISTS");
       return;
     }
-    
+
     toast.add({
       title: "Ошибка",
       description: "Не удалось получить запись",
@@ -445,14 +455,18 @@ const confirmTagChange = async () => {
     }
   } catch (error) {
     console.error("Ошибка при назначении тега:", error);
-    
+
     // Проверка на ошибку USER_NOT_EXISTS
-    if (error.data && (error.data.code === "USER_NOT_EXISTS" || error.data.data?.errorCode === "USER_NOT_EXISTS")) {
+    if (
+      error.data &&
+      (error.data.code === "USER_NOT_EXISTS" ||
+        error.data.data?.errorCode === "USER_NOT_EXISTS")
+    ) {
       auth.setErrorCode("USER_NOT_EXISTS");
       navigateTo("/?error=USER_NOT_EXISTS");
       return;
     }
-    
+
     toast.add({
       title: "Ошибка",
       description: error.message || "Не удалось назначить тег",
@@ -502,14 +516,18 @@ const saveComment = async () => {
     }
   } catch (error) {
     console.error("Ошибка при сохранении комментария:", error);
-    
+
     // Проверка на ошибку USER_NOT_EXISTS
-    if (error.data && (error.data.code === "USER_NOT_EXISTS" || error.data.data?.errorCode === "USER_NOT_EXISTS")) {
+    if (
+      error.data &&
+      (error.data.code === "USER_NOT_EXISTS" ||
+        error.data.data?.errorCode === "USER_NOT_EXISTS")
+    ) {
       auth.setErrorCode("USER_NOT_EXISTS");
       navigateTo("/?error=USER_NOT_EXISTS");
       return;
     }
-    
+
     toast.add({
       title: "Ошибка",
       description: error.message || "Не удалось сохранить комментарий",
