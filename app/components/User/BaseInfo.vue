@@ -450,6 +450,9 @@ const confirmTagChange = async () => {
 
       // Обновляем список звонков через событие
       window.dispatchEvent(new CustomEvent("call-list-updated"));
+
+      // Загружаем новую запись после подтверждения тега
+      await _fetchNextRecord();
     } else {
       throw new Error(response?.message || "Не удалось назначить тег");
     }
