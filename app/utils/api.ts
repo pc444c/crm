@@ -38,12 +38,37 @@ export const createApiClient = (role?: string) => {
     };
 
     try {
-      return await $fetch<T>(url, baseOptions);
+      const response = await $fetch<T>(url, baseOptions);
+
+      // Проверяем наличие кода ошибки USER_NOT_EXISTS в ответе
+      if (
+        response &&
+        typeof response === "object" &&
+        "code" in response &&
+        response.code === "USER_NOT_EXISTS"
+      ) {
+        auth.clear();
+        auth.setErrorCode("USER_NOT_EXISTS");
+        navigateTo("/?error=USER_NOT_EXISTS");
+        throw new Error("Пользователь не существует в системе");
+      }
+
+      return response;
     } catch (error: unknown) {
       // Обработка ошибок авторизации
       if (error instanceof FetchError && error.status === 401) {
         auth.clear(); // Очищаем данные авторизации
-        navigateTo("/"); // Перенаправляем на главную
+
+        // Проверка на ошибку "USER_NOT_EXISTS"
+        if (
+          error.data?.data?.errorCode === "USER_NOT_EXISTS" ||
+          error.data?.code === "USER_NOT_EXISTS"
+        ) {
+          auth.setErrorCode("USER_NOT_EXISTS");
+          navigateTo("/?error=USER_NOT_EXISTS"); // Перенаправляем на главную с указанием ошибки
+        } else {
+          navigateTo("/"); // Перенаправляем на главную
+        }
       }
 
       throw error;

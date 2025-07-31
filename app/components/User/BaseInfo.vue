@@ -1,27 +1,27 @@
 <template>
   <div class="flex flex-col lg:flex-row gap-4 w-full">
-    <!-- Левая карточка с кнопками и данными -->
+    <!-- Левая карточка           <UButton
+          v-if="currentRecord"
+          size="xs"
+          color="primary"
+          icon="i-heroicons-pencil-square"
+          :disabled="!currentRecord"
+          @click="editingComment = true"
+        >ми и данными -->
     <UCard class="w-full lg:w-2/3 bg-neutral-800 text-white">
       <div class="flex flex-col gap-6">
         <div class="flex justify-between items-center mb-2">
           <h3 class="text-lg font-semibold">Текущая запись</h3>
-          <UButton
-            color="primary"
-            size="sm"
-            icon="i-heroicons-arrow-path"
-            :loading="isLoading"
-            :disabled="isLoading || !currentRecord"
-            @click="fetchNextRecord"
-          >
-            Получить новую запись
-          </UButton>
         </div>
 
         <div v-if="isLoading" class="flex justify-center py-8">
           <UIcon name="i-heroicons-arrow-path" class="animate-spin text-4xl" />
         </div>
 
-        <div v-else-if="!currentRecord && !continueWorking" class="text-center py-8">
+        <div
+          v-else-if="!currentRecord && !continueWorking"
+          class="text-center py-8"
+        >
           <p class="text-gray-400 mb-4">Нет доступных записей</p>
           <UButton color="primary" @click="fetchRecord">
             Начать работу
@@ -33,10 +33,10 @@
             <p class="text-xl mb-4">Вы хотите продолжить работу?</p>
             <div class="flex justify-center gap-4">
               <UButton color="primary" @click="fetchRecord">
-                Да, продолжить
+                Продолжить работать
               </UButton>
               <UButton color="gray" @click="continueWorking = false">
-                Нет, закончить
+                Закончить
               </UButton>
             </div>
           </div>
@@ -45,12 +45,16 @@
         <template v-else>
           <!-- Панель статуса -->
           <div class="flex flex-wrap gap-2">
-            <UTooltip v-for="(tag, index) in listtag" :key="index" :text="tag.about">
+            <UTooltip
+              v-for="(tag, index) in listtag"
+              :key="index"
+              :text="tag.about"
+            >
               <button
                 :style="{ backgroundColor: tag.color }"
                 class="p-2 hover:opacity-80 transition-opacity text-white rounded"
-                @click="openModal(index)"
                 :disabled="isUpdatingTag"
+                @click="openModal(index)"
               >
                 {{ tag.name }}
               </button>
@@ -62,9 +66,17 @@
 
           <!-- Информация о текущей записи -->
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-4">
-            <div v-for="(field, index) in displayFields" :key="index" class="flex flex-col text-xl">
-              <span class="text-gray-400 font-semibold">{{ field.label }}:</span>
-              <span class="text-white">{{ getFieldValue(field.key) || "Н/Д" }}</span>
+            <div
+              v-for="(field, index) in displayFields"
+              :key="index"
+              class="flex flex-col text-xl"
+            >
+              <span class="text-gray-400 font-semibold"
+                >{{ field.label }}:</span
+              >
+              <span class="text-white">{{
+                getFieldValue(field.key) || "Н/Д"
+              }}</span>
             </div>
           </div>
         </template>
@@ -80,22 +92,25 @@
           size="xs"
           color="primary"
           icon="i-heroicons-pencil-square"
-          @click="editingComment = true"
           :disabled="!currentRecord"
+          @click="editingComment = true"
         >
           Редактировать
         </UButton>
       </div>
-      
+
       <div v-if="!currentRecord" class="text-center text-gray-400 py-8">
         Нет активной записи
       </div>
-      
+
       <template v-else>
-        <div v-if="!editingComment" class="text-lg whitespace-pre-line leading-relaxed text-gray-200 mt-4">
+        <div
+          v-if="!editingComment"
+          class="text-lg whitespace-pre-line leading-relaxed text-gray-200 mt-4"
+        >
           {{ currentRecord.description || "Комментарий отсутствует" }}
         </div>
-        
+
         <div v-else class="mt-4">
           <UTextarea
             v-model="commentText"
@@ -103,10 +118,17 @@
             :rows="6"
             class="w-full"
           />
-          
+
           <div class="flex justify-end gap-2 mt-4">
-            <UButton size="sm" color="gray" @click="cancelEditComment">Отмена</UButton>
-            <UButton size="sm" color="primary" @click="saveComment" :loading="isSavingComment">
+            <UButton size="sm" color="gray" @click="cancelEditComment"
+              >Отмена</UButton
+            >
+            <UButton
+              size="sm"
+              color="primary"
+              :loading="isSavingComment"
+              @click="saveComment"
+            >
               Сохранить
             </UButton>
           </div>
@@ -116,34 +138,38 @@
   </div>
 
   <!-- Модальное окно выбора статуса -->
-  <UModal v-model="isOpen" title="Подтверждение статуса">
-    <div class="p-4">
-      <div class="flex flex-col items-center justify-center gap-4 mb-6">
-        <span class="text-lg">Вы уверены, что хотите выбрать этот статус?</span>
-        <div
-          :style="{ backgroundColor: ModalData.color }"
-          class="p-2 px-4 text-white rounded font-medium"
-        >
-          {{ ModalData.name }}
+  <UModal v-model:open="isOpen" title="Подтверждение статуса">
+    <template #body>
+      <div class="p-4">
+        <div class="flex flex-col items-center justify-center gap-4 mb-6">
+          <span class="text-lg">Вы уверены, что хотите выбрать этот статус?</span>
+          <div
+            :style="{ backgroundColor: ModalData.color }"
+            class="p-2 px-4 text-white rounded font-medium"
+          >
+            {{ ModalData.name }}
+          </div>
+
+          <p class="text-gray-500 text-sm text-center">
+            После подтверждения статуса текущая запись будет завершена. Чтобы
+            продолжить работу с новыми записями, нажмите кнопку "Продолжить
+            работать".
+          </p>
         </div>
-        
-        <p class="text-gray-500 text-sm text-center">
-          После подтверждения статуса текущая запись будет завершена, и вы сможете продолжить работу с новой записью.
-        </p>
+
+        <div class="flex justify-center gap-4">
+          <UButton color="gray" @click="isOpen = false">Отмена</UButton>
+          <UButton
+            color="primary"
+            icon="i-heroicons-check"
+            :loading="isUpdatingTag"
+            @click="confirmTagChange"
+          >
+            Подтвердить
+          </UButton>
+        </div>
       </div>
-      
-      <div class="flex justify-center gap-4">
-        <UButton color="gray" @click="isOpen = false">Отмена</UButton>
-        <UButton
-          color="primary"
-          icon="i-heroicons-check"
-          :loading="isUpdatingTag"
-          @click="confirmTagChange"
-        >
-          Подтвердить
-        </UButton>
-      </div>
-    </div>
+    </template>
   </UModal>
 </template>
 
@@ -163,7 +189,7 @@ const listtag = ref([]);
 const ModalData = ref({});
 const continueWorking = ref(false);
 const editingComment = ref(false);
-const commentText = ref('');
+const commentText = ref("");
 const isSavingComment = ref(false);
 
 // Поля для отображения
@@ -186,13 +212,47 @@ const getFieldValue = (key) => {
 
 // Загрузка списка тегов
 const getTags = async () => {
+  // Проверяем актуальность аутентификации перед каждым запросом
+  await auth.checkAuth();
+
+  if (!auth.isAuthenticated) return;
+
   try {
-    const response = await $fetch("/api/admin/listtags");
-    if (response) {
+    // Сначала пробуем загрузить через API для пользователей
+    let response = await $fetch("/api/tags/list").catch((error) => {
+      // Если ошибка связана с отсутствием пользователя в базе
+      if (error.data && error.data.code === "USER_NOT_EXISTS") {
+        auth.setErrorCode("USER_NOT_EXISTS");
+        navigateTo("/?error=USER_NOT_EXISTS");
+        return null;
+      }
+      return null;
+    });
+
+    // Если не получилось, пробуем через админское API (для обратной совместимости)
+    if (!response) {
+      response = await $fetch("/api/admin/listtags").catch(() => null);
+    }
+
+    if (response && !response.code) {
+      console.log("Загружены теги:", response);
       listtag.value = response;
+    } else if (response && response.code === "USER_NOT_EXISTS") {
+      auth.setErrorCode("USER_NOT_EXISTS");
+      navigateTo("/?error=USER_NOT_EXISTS");
+    } else {
+      throw new Error("Не удалось загрузить теги");
     }
   } catch (error) {
     console.error("Ошибка при загрузке тегов:", error);
+
+    // Проверка на ошибку USER_NOT_EXISTS
+    if (error.data && error.data.code === "USER_NOT_EXISTS") {
+      auth.setErrorCode("USER_NOT_EXISTS");
+      navigateTo("/?error=USER_NOT_EXISTS");
+      return;
+    }
+
     toast.add({
       title: "Ошибка",
       description: "Не удалось загрузить теги",
@@ -203,32 +263,45 @@ const getTags = async () => {
 
 // Получить текущую запись
 const fetchRecord = async () => {
-  if (!auth.id) return;
-  
+  // Проверяем актуальность аутентификации перед каждым запросом
+  await auth.checkAuth();
+
+  if (!auth.getId || !auth.isAuthenticated) return;
+
   isLoading.value = true;
-  
+  console.log("Запрашиваем запись для пользователя ID:", auth.getId);
+
   try {
     const response = await $fetch("/api/user/getContant", {
       method: "POST",
       body: {
-        userId: auth.id,
-      }
+        userId: auth.getId,
+      },
     });
-    
+
     if (response && response.success && response.record) {
       currentRecord.value = response.record;
-      commentText.value = response.record.description || '';
+      commentText.value = response.record.description || "";
       continueWorking.value = false;
     } else {
       toast.add({
         title: "Информация",
-        description: response && response.error ? response.error : "Нет доступных записей",
+        description:
+          response && response.error ? response.error : "БАЗА ЗАКОНЧИЛАСЬ",
         color: "warning",
       });
       currentRecord.value = null;
     }
   } catch (error) {
     console.error("Ошибка при получении записи:", error);
+    
+    // Проверка на ошибку USER_NOT_EXISTS
+    if (error.data && (error.data.code === "USER_NOT_EXISTS" || error.data.data?.errorCode === "USER_NOT_EXISTS")) {
+      auth.setErrorCode("USER_NOT_EXISTS");
+      navigateTo("/?error=USER_NOT_EXISTS");
+      return;
+    }
+    
     toast.add({
       title: "Ошибка",
       description: "Не удалось получить запись",
@@ -241,26 +314,30 @@ const fetchRecord = async () => {
 };
 
 // Получить следующую запись
-const fetchNextRecord = async () => {
-  if (!auth.id || !currentRecord.value) return;
-  
+const _fetchNextRecord = async () => {
+  // Проверяем актуальность аутентификации перед каждым запросом
+  await auth.checkAuth();
+
+  if (!auth.getId || !currentRecord.value || !auth.isAuthenticated) return;
+
   isLoading.value = true;
-  
+  console.log("Запрашиваем следующую запись для пользователя ID:", auth.getId);
+
   try {
     const response = await $fetch("/api/user/nextRecord", {
       method: "POST",
       body: {
-        userId: auth.id,
+        userId: auth.getId,
         currentRecordId: currentRecord.value.id,
-        newTag: currentRecord.value.tag || "no used" // По умолчанию, если тег не был изменен
-      }
+        newTag: currentRecord.value.tag || "no used", // По умолчанию, если тег не был изменен
+      },
     });
-    
+
     if (response && response.success && response.record) {
       currentRecord.value = response.record;
-      commentText.value = response.record.description || '';
+      commentText.value = response.record.description || "";
       continueWorking.value = false;
-      
+
       toast.add({
         title: "Успешно",
         description: "Загружена новая запись",
@@ -269,15 +346,24 @@ const fetchNextRecord = async () => {
     } else {
       currentRecord.value = null;
       continueWorking.value = true;
-      
+
       toast.add({
         title: "Информация",
-        description: response && response.error ? response.error : "Нет доступных записей",
+        description:
+          response && response.error ? response.error : "БАЗА ЗАКОНЧИЛАСЬ",
         color: "warning",
       });
     }
   } catch (error) {
     console.error("Ошибка при получении записи:", error);
+    
+    // Проверка на ошибку USER_NOT_EXISTS
+    if (error.data && (error.data.code === "USER_NOT_EXISTS" || error.data.data?.errorCode === "USER_NOT_EXISTS")) {
+      auth.setErrorCode("USER_NOT_EXISTS");
+      navigateTo("/?error=USER_NOT_EXISTS");
+      return;
+    }
+    
     toast.add({
       title: "Ошибка",
       description: "Не удалось получить запись",
@@ -297,57 +383,76 @@ const openModal = (index) => {
 
 // Подтвердить изменение тега
 const confirmTagChange = async () => {
-  if (!currentRecord.value || !ModalData.value.name) return;
-  
+  // Проверяем актуальность аутентификации перед каждым запросом
+  await auth.checkAuth();
+
+  if (!currentRecord.value || !ModalData.value.name || !auth.isAuthenticated)
+    return;
+
   isUpdatingTag.value = true;
-  
+
   try {
     // Находим tagId по имени тега
     let tagId = null;
-    const tagMatch = listtag.value.find(t => t.name === ModalData.value.name);
+    const tagMatch = listtag.value.find((t) => t.name === ModalData.value.name);
     if (tagMatch) {
       tagId = tagMatch.id;
     }
-    
+
     if (!tagId) {
       throw new Error("Не удалось найти ID тега");
     }
-    
+
     // Назначаем тег записи
     const response = await $fetch("/api/records/setTag", {
       method: "POST",
       body: {
         recordId: currentRecord.value.id,
-        tagId: tagId
-      }
+        tagId: tagId,
+      },
     });
-    
+
     if (response && response.status === "success") {
       // Обновляем текущую запись с новым тегом
       currentRecord.value.tag = ModalData.value.name;
       currentRecord.value.tagInfo = {
         id: tagId,
         name: ModalData.value.name,
-        color: ModalData.value.color
+        color: ModalData.value.color,
       };
-      
+
       toast.add({
         title: "Успешно",
         description: "Тег успешно назначен",
         color: "success",
       });
-      
+
       // Закрываем модальное окно
       isOpen.value = false;
-      
-      // Показываем диалог продолжения работы
-      currentRecord.value = null;
-      continueWorking.value = true;
+
+      toast.add({
+        title: "Готово",
+        description:
+          "Запись обработана. Нажмите 'Продолжить работать' для следующей записи",
+        color: "success",
+        timeout: 5000,
+      });
+
+      // Обновляем список звонков через событие
+      window.dispatchEvent(new CustomEvent("call-list-updated"));
     } else {
       throw new Error(response?.message || "Не удалось назначить тег");
     }
   } catch (error) {
     console.error("Ошибка при назначении тега:", error);
+    
+    // Проверка на ошибку USER_NOT_EXISTS
+    if (error.data && (error.data.code === "USER_NOT_EXISTS" || error.data.data?.errorCode === "USER_NOT_EXISTS")) {
+      auth.setErrorCode("USER_NOT_EXISTS");
+      navigateTo("/?error=USER_NOT_EXISTS");
+      return;
+    }
+    
     toast.add({
       title: "Ошибка",
       description: error.message || "Не удалось назначить тег",
@@ -361,29 +466,32 @@ const confirmTagChange = async () => {
 // Редактирование комментария
 const cancelEditComment = () => {
   editingComment.value = false;
-  commentText.value = currentRecord.value?.description || '';
+  commentText.value = currentRecord.value?.description || "";
 };
 
 // Сохранение комментария
 const saveComment = async () => {
-  if (!currentRecord.value) return;
-  
+  // Проверяем актуальность аутентификации перед каждым запросом
+  await auth.checkAuth();
+
+  if (!currentRecord.value || !auth.isAuthenticated) return;
+
   isSavingComment.value = true;
-  
+
   try {
     const response = await $fetch("/api/user/updateComment", {
       method: "POST",
       body: {
         recordId: currentRecord.value.id,
-        comment: commentText.value
-      }
+        comment: commentText.value,
+      },
     });
-    
+
     if (response && response.status === "success") {
       // Обновляем локальное значение
       currentRecord.value.description = commentText.value;
       editingComment.value = false;
-      
+
       toast.add({
         title: "Успешно",
         description: "Комментарий сохранен",
@@ -394,6 +502,14 @@ const saveComment = async () => {
     }
   } catch (error) {
     console.error("Ошибка при сохранении комментария:", error);
+    
+    // Проверка на ошибку USER_NOT_EXISTS
+    if (error.data && (error.data.code === "USER_NOT_EXISTS" || error.data.data?.errorCode === "USER_NOT_EXISTS")) {
+      auth.setErrorCode("USER_NOT_EXISTS");
+      navigateTo("/?error=USER_NOT_EXISTS");
+      return;
+    }
+    
     toast.add({
       title: "Ошибка",
       description: error.message || "Не удалось сохранить комментарий",
@@ -405,66 +521,15 @@ const saveComment = async () => {
 };
 
 // Инициализация компонента
-onMounted(() => {
-  getTags();
-  fetchRecord();
-});
-const getTags = async () => {
-  try {
-    const response = await $fetch("/api/admin/listtags");
-    if (response) {
-      listtag.value = response;
-    }
-  } catch (error) {
-    console.error("Ошибка при загрузке тегов:", error);
-    toast.add({
-      title: "Ошибка",
-      description: "Не удалось загрузить теги",
-      color: "red",
-    });
-  }
-};
+onMounted(async () => {
+  // Сначала проверяем аутентификацию
+  await auth.checkAuth();
 
-// Получить текущую запись
-const fetchRecord = async () => {
-  if (!auth.user?.id) return;
-  
-  isLoading.value = true;
-  
-  try {
-    const response = await $fetch("/api/user/getContant", {
-      method: "POST",
-      body: {
-        userId: auth.user.id,
-      }
-    });
-    
-    if (response?.success && response.record) {
-      currentRecord.value = response.record;
-      commentText.value = response.record.description || '';
-      continueWorking.value = false;
-    } else {
-      toast.add({
-        title: "Информация",
-        description: response?.error || "Нет доступных записей",
-        color: "yellow",
-      });
-      currentRecord.value = null;
-    }
-  } catch (error) {
-    console.error("Ошибка при получении записи:", error);
-    toast.add({
-      title: "Ошибка",
-      description: "Не удалось получить запись",
-      color: "red",
-    });
-    currentRecord.value = null;
-  } finally {
-    isLoading.value = false;
+  // Если пользователь не существует, middleware автоматически перенаправит на страницу входа
+  // Если все в порядке, продолжаем инициализацию
+  if (auth.isAuthenticated) {
+    getTags();
+    fetchRecord();
   }
-};
-onMounted(() => {
-  getTags(); // Загрузка тегов при монтировании компонента
 });
 </script>
-

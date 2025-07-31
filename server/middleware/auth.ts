@@ -1,5 +1,8 @@
 import { verifyToken } from "../utils/jwt";
 import { getCookie, createError, getHeader } from "h3";
+import { db } from "~~/server";
+import { users } from "~~/server/schema";
+import { eq } from "drizzle-orm";
 
 // Маршруты, требующие роли администратора
 const adminRoutes = [
@@ -55,6 +58,22 @@ export default defineEventHandler(async (event) => {
         statusCode: 401,
         statusMessage: "Unauthorized",
         message: "Invalid or expired token",
+      });
+    }
+
+    // Проверяем существование пользователя в базе данных
+    const dbUser = await db
+      .select()
+      .from(users)
+      .where(eq(users.id, user.id))
+      .limit(1);
+
+    if (!dbUser || dbUser.length === 0) {
+      throw createError({
+        statusCode: 401,
+        statusMessage: "User not found",
+        message: "Пользователь не существует в системе",
+        data: { errorCode: "USER_NOT_EXISTS" },
       });
     }
 

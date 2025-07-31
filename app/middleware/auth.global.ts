@@ -17,7 +17,7 @@ export default defineNuxtRouteMiddleware(async (to) => {
 
   try {
     // Проверяем токен
-    await auth.checkAuth();
+    const authResult = await auth.checkAuth();
 
     if (import.meta.client) {
       console.debug(
@@ -30,11 +30,18 @@ export default defineNuxtRouteMiddleware(async (to) => {
       }
     }
 
-    // Если пользователь не аутентифицирован, перенаправляем на страницу входа с сохранением исходного маршрута
+    // Если пользователь не аутентифицирован или произошла ошибка с кодом USER_NOT_EXISTS,
+    // выполняем выход и перенаправляем на главную страницу с сообщением об ошибке
     if (!auth.isAuthenticated) {
       return navigateTo({
         path: "/",
-        query: { redirect: to.fullPath },
+        query: {
+          redirect: to.fullPath,
+          error:
+            auth.errorCode === "USER_NOT_EXISTS"
+              ? "USER_NOT_EXISTS"
+              : undefined,
+        },
       });
     }
 

@@ -5,6 +5,7 @@ export const useAuthStore = defineStore("auth", {
     id: "",
     token: "",
     isAuthenticated: false,
+    errorCode: "", // Код ошибки аутентификации
   }),
 
   getters: {
@@ -14,6 +15,10 @@ export const useAuthStore = defineStore("auth", {
   },
 
   actions: {
+    setErrorCode(code: string) {
+      this.errorCode = code;
+    },
+
     saveAll(role: string, login: string, id: string, token: string) {
       this.role = btoa(role);
       this.login = btoa(login);
@@ -28,6 +33,7 @@ export const useAuthStore = defineStore("auth", {
       this.id = "";
       this.token = "";
       this.isAuthenticated = false;
+      // Не очищаем errorCode, чтобы он сохранялся для отображения ошибки
     },
 
     async logout() {
@@ -47,27 +53,37 @@ export const useAuthStore = defineStore("auth", {
     async checkAuth() {
       // Проверяем аутентификацию на сервере
       try {
-        const response = await $fetch("/api/verify-auth", {
+        const response: any = await $fetch("/api/verify-auth", {
           method: "GET",
         });
 
         if (response && response.status === "success") {
           // Обновляем данные пользователя из токена
-          this.saveAll(
-            response.user.role,
-            response.user.username,
-            response.user.id,
-            response.token
-          );
+          if (response.user && response.token) {
+            this.saveAll(
+              response.user.role,
+              response.user.username,
+              response.user.id,
+              response.token
+            );
+            this.errorCode = ""; // Сбрасываем код ошибки
+          }
           return true;
         } else {
-          // Если токен недействителен, очищаем состояние
+          // Если токен недействителен или пользователь не существует, очищаем состояние
           this.clear();
+
+          // Если есть код ошибки, сохраняем его
+          if (response && response.code) {
+            this.errorCode = response.code;
+          }
+
           return false;
         }
-      } catch (error) {
+      } catch (err) {
         // При ошибке (401, 403 и т.д.) очищаем состояние
         this.clear();
+        console.error("Ошибка при проверке аутентификации:", err);
         return false;
       }
     },

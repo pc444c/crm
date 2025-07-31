@@ -1,9 +1,22 @@
 <template>
   <div>
-    
     <Header />
-    
+
     <div class="flex flex-col gap-4 items-center justify-center h-screen">
+      <!-- Сообщение об ошибке "пользователь не существует" -->
+      <UAlert
+        v-if="
+          route.query.error === 'USER_NOT_EXISTS' ||
+          useStore.errorCode === 'USER_NOT_EXISTS'
+        "
+        title="Ошибка аутентификации"
+        description="Ваша учетная запись не существует в системе. Обратитесь к администратору."
+        color="error"
+        variant="soft"
+        icon="i-heroicons-exclamation-triangle"
+        class="mb-4 w-96"
+      />
+
       <section
         class="p-8 min-w-96 bg-neutral-800 rounded-lg shadow-lg flex flex-col items-center gap-4"
       >
@@ -48,6 +61,7 @@ const UserData = ref({
 });
 const useStore = useAuthStore();
 const toast = useToast();
+const route = useRoute();
 
 useHead({
   title: "Авторизация",
@@ -95,7 +109,7 @@ async function Login() {
 
       // Проверяем, есть ли сохраненный маршрут для редиректа
       const redirectPath = route.query.redirect as string | undefined;
-      
+
       if (response.user.role === "admin") {
         toast.add({
           title: "Вы вошли как администратор",
