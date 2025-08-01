@@ -1,5 +1,5 @@
 ﻿import { db } from "~~/server";
-import { users, records, tags } from "~~/server/schema";
+import { records, tags } from "~~/server/schema";
 import { eq, sql, and, gte, lte, asc, desc } from "drizzle-orm";
 import { defineEventHandler, readBody } from "h3";
 
@@ -34,16 +34,19 @@ export default defineEventHandler(async (event) => {
       };
     }
 
-    // РџРѕР»СѓС‡Р°РµРј РІСЃРµ РґРѕСЃС‚СѓРїРЅС‹Рµ С‚РµРіРё
+    // Получаем все доступные теги с их цветами
     const tagsList = await db.select().from(tags).execute();
 
-    // РЎС‚СЂРѕРёРј СѓСЃР»РѕРІРёСЏ РґР»СЏ Р·Р°РїСЂРѕСЃР°
-    // РќР°С…РѕРґРёРј РІСЃРµ Р·Р°РїРёСЃРё, Сѓ РєРѕС‚РѕСЂС‹С… С‚РµРі РЅРµ "no used",
-    // СЌС‚Рѕ Р±СѓРґСѓС‚ РІСЃРµ РѕР±СЂР°Р±РѕС‚Р°РЅРЅС‹Рµ Р·Р°РїРёСЃРё РІ СЃРёСЃС‚РµРјРµ
+    // Строим условия для запроса
+    // Находим все записи, у которых тег не "no used",
+    // это будут все обработанные записи в системе
     const conditions = [];
 
-    // РџРѕ СѓРјРѕР»С‡Р°РЅРёСЋ РёСЃРєР»СЋС‡Р°РµРј Р·Р°РїРёСЃРё СЃРѕ СЃС‚Р°С‚СѓСЃРѕРј "no used"
+    // По умолчанию исключаем записи со статусом "no used"
     conditions.push(sql`${records.tag} != 'no used'`);
+
+    // Добавляем условие по user_id для показа только записей текущего пользователя
+    conditions.push(eq(records.user_id, userIdNum));
 
     // Р”РѕР±Р°РІР»СЏРµРј С„РёР»СЊС‚СЂ РїРѕ СЃС‚Р°С‚СѓСЃСѓ, РµСЃР»Рё СѓРєР°Р·Р°РЅ
     if (filterStatus) {
@@ -139,10 +142,14 @@ export default defineEventHandler(async (event) => {
       tags: tagsList,
     };
   } catch (error) {
-    console.error("РћС€РёР±РєР° РїСЂРё РїРѕР»СѓС‡РµРЅРёРё СЃРїРёСЃРєР° Р·РІРѕРЅРєРѕРІ:", error);
+    console.error(
+      "РћС€РёР±РєР° РїСЂРё РїРѕР»СѓС‡РµРЅРёРё СЃРїРёСЃРєР° Р·РІРѕРЅРєРѕРІ:",
+      error
+    );
     return {
       success: false,
-      error: "РћС€РёР±РєР° РїСЂРё РїРѕР»СѓС‡РµРЅРёРё СЃРїРёСЃРєР° Р·РІРѕРЅРєРѕРІ",
+      error:
+        "РћС€РёР±РєР° РїСЂРё РїРѕР»СѓС‡РµРЅРёРё СЃРїРёСЃРєР° Р·РІРѕРЅРєРѕРІ",
     };
   }
 });

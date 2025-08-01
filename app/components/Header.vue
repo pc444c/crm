@@ -14,7 +14,11 @@
     </div>
 
     <div class="flex-grow">
-      <UNavigationMenu color="primary" :items="items" class="w-full" />
+      <UNavigationMenu
+        color="primary"
+        :items="navigationItems"
+        class="w-full"
+      />
     </div>
 
     <div v-if="auth.getRole" class="flex items-center gap-2">
@@ -39,7 +43,54 @@ const auth = useAuthStore();
 const toast = useToast();
 
 // Определяем пункты меню в зависимости от роли пользователя
+const navigationItems = computed(() => {
+  const items = [];
 
+  if (auth.getRole === "user") {
+    items.push(
+      {
+        label: "Главная",
+        to: "/user",
+        icon: "i-heroicons-home",
+      },
+      {
+        label: "Статистика звонков",
+        to: "/user/statistics",
+        icon: "i-heroicons-chart-bar",
+      }
+    );
+  } else if (auth.getRole === "admin") {
+    items.push(
+      {
+        label: "Главная",
+        to: "/admin",
+        icon: "i-heroicons-home",
+      },
+      {
+        label: "Базы данных",
+        to: "/admin/listdatabases",
+        icon: "i-heroicons-database",
+      },
+      {
+        label: "Пользователи",
+        to: "/admin/users",
+        icon: "i-heroicons-users",
+      },
+      {
+        label: "Записи",
+        to: "/admin/records",
+        icon: "i-heroicons-document-text",
+      },
+      {
+        label: "Теги",
+        to: "/admin/set_tags",
+        icon: "i-heroicons-tag",
+      }
+    );
+  }
+
+  return items;
+});
 
 // Функция для выхода из системы
 async function handleLogout() {

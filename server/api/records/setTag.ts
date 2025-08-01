@@ -2,10 +2,22 @@ import { db } from "../../index";
 import { records, tags } from "../../schema";
 import { defineEventHandler, readBody } from "h3";
 import { eq } from "drizzle-orm";
+import { verifyAuth } from "../../utils/jwt";
 
 // API для назначения тега записи
 export default defineEventHandler(async (event) => {
   try {
+    // Получаем информацию об авторизованном пользователе
+    const userData = await verifyAuth(event);
+
+    if (!userData) {
+      return {
+        status: "error",
+        message: "Не авторизован",
+        code: 401,
+      };
+    }
+
     const body = await readBody(event);
     const { recordId, tagId } = body;
 
@@ -47,24 +59,30 @@ export default defineEventHandler(async (event) => {
       };
     }
 
-    // БУДУЩЕЕ УЛУЧШЕНИЕ: Если добавим поле processed_by в схему records,
-    // мы сможем сохранять ID пользователя, который обработал запись:
-    //
-    // const currentRecord = await db
-    //  .select()
-    //  .from(records)
-    //  .where(eq(records.id, recordId))
-    //  .limit(1);
-    // const currentUserId = currentRecord[0].user_id;
-    // Добавить в set: processed_by: currentUserId
+    // Получаем текущую запись, чтобы узнать user_id
+    const currentRecord = await db
+      .select()
+      .from(records)
+      .where(eq(records.id, recordId))
+      .limit(1);
 
-    // Обновляем запись с новым тегом и освобождаем её от пользователя
+    if (currentRecord.length === 0) {
+      return {
+        status: "error",
+        message: "Запись не найдена",
+      };
+    }
+
+    // Запоминаем текущего пользователя, который работал с записью
+    // const currentUserId = currentRecord[0].user_id;
+
+    // Обновляем запись с новым тегом и сохраняем ID пользователя, который его обработал
     const [updatedRecord] = await db
       .update(records)
       .set({
         tag: tagName,
         status_updated_at: new Date(),
-        user_id: null, // Освобождаем запись от пользователя
+        user_id: userData.id, // Сохраняем ID пользователя, который назначил тег
       })
       .where(eq(records.id, recordId))
       .returning();

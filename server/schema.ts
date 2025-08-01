@@ -43,7 +43,7 @@ export const records = pgTable("records", {
   description: varchar("description", { length: 500 }), // "Доп. информация"
   created_at: timestamp("created_at", { precision: 3 }).defaultNow().notNull(),
   tag: varchar("tag", { length: 50 }).default("no used").notNull(), // Добавляем поле tag
-  user_id: integer("user_id"),
+  user_id: integer("user_id").references(() => users.id), // ID пользователя с внешним ключом
   // поле сохранение изменения статуса дата
   status_updated_at: timestamp("status_updated_at", {
     precision: 3,

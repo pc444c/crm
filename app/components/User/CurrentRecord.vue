@@ -45,20 +45,20 @@
         <!-- Тег записи -->
         <div class="mt-4 flex items-center gap-2">
           <span class="text-gray-400 text-sm">Текущий тег:</span>
-          <UChip
+          <!-- Используем универсальный компонент TagButton -->
+          <TagButton
             v-if="currentRecord.tag && currentRecord.tagInfo"
+            :text="currentRecord.tag"
+            :tooltip-text="
+              tagUtils.getTagAbout(currentRecord.tag, [currentRecord.tagInfo])
+            "
             :color="
-              currentRecord.tagInfo.color || getTagColor(currentRecord.tag)
+              currentRecord.tagInfo.color ||
+              tagUtils.getTagActualColor(currentRecord.tag, [
+                currentRecord.tagInfo,
+              ])
             "
-            :text-color="
-              getContrastColor(
-                currentRecord.tagInfo?.color || getTagColor(currentRecord.tag)
-              )
-            "
-            variant="solid"
-          >
-            {{ currentRecord.tag }}
-          </UChip>
+          />
           <span v-else class="text-gray-400 italic">Не назначен</span>
 
           <UButton
@@ -128,6 +128,8 @@
 <script setup>
 import { ref, onMounted } from "vue";
 import { useAuthStore } from "~/store/useAuth";
+import { formatFullDate } from "~/utils/dates";
+import * as tagUtils from "~/utils/tags";
 
 const auth = useAuthStore();
 const currentRecord = ref(null);
@@ -215,41 +217,13 @@ function getFieldValue(key) {
   return currentRecord.value ? currentRecord.value[key] : "";
 }
 
-// Получить цвет тега
-function getTagColor(_tagName) {
-  // Здесь можно реализовать получение цвета тега из хранилища тегов
-  // Пока возвращаем стандартный цвет
-  return "#3B82F6";
-}
+// Эти функции больше не нужны, т.к. теперь используется утилита tagUtils
 
-// Получить контрастный цвет
-function getContrastColor(bgColor) {
-  if (!bgColor) return "white";
-
-  // Простой алгоритм для определения контрастного цвета
-  const r = parseInt(bgColor.slice(1, 3), 16);
-  const g = parseInt(bgColor.slice(3, 5), 16);
-  const b = parseInt(bgColor.slice(5, 7), 16);
-
-  const brightness = (r * 299 + g * 587 + b * 114) / 1000;
-
-  return brightness > 128 ? "black" : "white";
-}
-
-// Форматирование даты
+// Форматирование даты с использованием утилиты
 function formatDate(dateStr) {
   if (!dateStr) return "";
-  const date = new Date(dateStr);
-  return date.toLocaleDateString("ru-RU", {
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-}
-
-// Загрузка данных при монтировании компонента
+  return formatFullDate(dateStr);
+} // Загрузка данных при монтировании компонента
 onMounted(() => {
   fetchCurrentRecord();
 });

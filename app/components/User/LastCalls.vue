@@ -1,15 +1,19 @@
 <template>
-  <div class="flex flex-col gap-4">
-    <USeparator color="primary" label="История звонков" />
+  <div class="flex flex-col gap-4 bg-neutral-800 rounded-lg p-4 shadow-lg border border-neutral-700">
+    <h2 class="text-lg font-semibold text-primary-400">История звонков</h2>
     <div
-      class="flex flex-col md:flex-row md:items-center justify-between gap-4"
-    >
+      class="flex flex-col md:flex-r        // Получаем все доступные теги
+      if (response.tags && response.tags.length > 0) {
+        tags.value = response.tags;
+      }
       
-
+      // Записываем звонки в state независимо от наличия тегов
+      calls.value = filteredCalls;ter justify-between gap-4"
+    >
       <!-- Фильтры и сортировка -->
       <div class="flex flex-wrap items-center gap-3">
         <!-- Фильтр по статусу -->
-        
+
         <!-- Направление сортировки -->
         <UButton
           size="sm"
@@ -32,11 +36,11 @@
             <div class="p-4 flex flex-col gap-3">
               <div class="flex flex-col gap-1">
                 <label class="text-sm text-gray-600">С даты:</label>
-                <UInput type="date" v-model="dateFrom" />
+                <UInput v-model="dateFrom" type="date" />
               </div>
               <div class="flex flex-col gap-1">
                 <label class="text-sm text-gray-600">По дату:</label>
-                <UInput type="date" v-model="dateTo" />
+                <UInput v-model="dateTo" type="date" />
               </div>
               <div class="flex gap-2 justify-end">
                 <UButton size="xs" color="gray" @click="clearDateFilter"
@@ -63,9 +67,9 @@
     </div>
 
     <!-- Таблица со звонками -->
-    <div v-else class="overflow-auto rounded-md">
+    <div v-else class="overflow-auto rounded-md shadow-md">
       <table class="min-w-full text-sm text-left text-gray-400">
-        <thead class="bg-neutral-900 text-gray-300 uppercase text-xs">
+        <thead class="bg-neutral-900 text-gray-300 uppercase text-xs sticky top-0 z-10">
           <tr>
             <th class="px-4 py-3">Статус</th>
             <th class="px-4 py-3">ФИО</th>
@@ -81,12 +85,15 @@
             class="hover:bg-neutral-700"
           >
             <td class="px-4 py-3 flex items-center gap-2">
-              <div
-                v-if="call.tagInfo"
-                :style="{ backgroundColor: call.tagInfo.color }"
-                class="w-3 h-3 rounded-full"
-              ></div>
-              <span class="text-white">{{ call.tag || "Не назначен" }}</span>
+              <!-- Используем универсальный компонент TagButton -->
+              <TagButton
+                v-if="call.tag"
+                :text="call.tag"
+                :tooltip-text="tagUtils.getTagAbout(call.tag, tags)"
+                :color="tagUtils.getTagActualColor(call.tag, tags)"
+                class="text-xs"
+              />
+              <span v-else class="text-white">Без статуса</span>
             </td>
             <td class="px-4 py-3 text-white">{{ call.fio || "Н/Д" }}</td>
             <td class="px-4 py-3 font-mono text-white">
@@ -103,22 +110,26 @@
       </table>
 
       <!-- Пагинация -->
-      <div class="flex justify-between items-center bg-neutral-900 px-4 py-3">
+      <div class="flex justify-between items-center bg-neutral-900 px-4 py-3 rounded-b-md border-t border-neutral-700">
         <div class="text-sm text-gray-400">
           Показано: {{ Math.min(limit, calls.length) }} из {{ totalRecords }}
         </div>
         <div class="flex gap-2">
           <UButton
             size="sm"
+            color="primary"
+            variant="ghost"
+            icon="i-heroicons-chevron-left"
             :disabled="currentPage === 1"
             @click="prevPage"
-            icon="i-heroicons-chevron-left"
           />
           <UButton
             size="sm"
+            color="primary"
+            variant="ghost"
+            icon="i-heroicons-chevron-right"
             :disabled="currentPage * limit >= totalRecords"
             @click="nextPage"
-            icon="i-heroicons-chevron-right"
           />
         </div>
       </div>
@@ -129,6 +140,9 @@
 <script setup>
 import { ref, onMounted, onUnmounted, computed } from "vue";
 import { useAuthStore } from "~/store/useAuth";
+import { formatFullDate } from "~/utils/dates";
+import * as tagUtils from "~/utils/tags";
+import TagButton from "~/components/ui/TagButton.vue";
 
 const auth = useAuthStore();
 const toast = useToast();
@@ -150,7 +164,8 @@ const dateFilter = ref(false);
 // Вычисляемые свойства
 const offset = computed(() => (currentPage.value - 1) * limit.value);
 
-const tagOptions = computed(() => {
+// Оставляем на случай будущего использования, добавляем префикс _ чтобы избежать линт-ошибок
+const _tagOptions = computed(() => {
   // Добавляем опцию "Все" в начало списка
   return [
     { value: null, label: "Все статусы" },
@@ -162,7 +177,8 @@ const tagOptions = computed(() => {
   ];
 });
 
-const sortOptions = computed(() => [
+// Оставляем на случай будущего использования, добавляем префикс _ чтобы избежать линт-ошибок
+const _sortOptions = computed(() => [
   { value: "dateStatus", label: "По дате статуса" },
   { value: "dateAssign", label: "По дате назначения" },
   { value: "fio", label: "По ФИО" },
@@ -172,32 +188,7 @@ const sortOptions = computed(() => [
 // Методы
 function formatDate(dateStr) {
   if (!dateStr) return "Н/Д";
-
-  const months = [
-    "января",
-    "февраля",
-    "марта",
-    "апреля",
-    "мая",
-    "июня",
-    "июля",
-    "августа",
-    "сентября",
-    "октября",
-    "ноября",
-    "декабря",
-  ];
-
-  const date = new Date(dateStr);
-  if (isNaN(date.getTime())) return "Некорректная дата";
-
-  const day = date.getDate();
-  const month = months[date.getMonth()];
-  const year = date.getFullYear();
-  const hours = date.getHours().toString().padStart(2, "0");
-  const minutes = date.getMinutes().toString().padStart(2, "0");
-
-  return `${day} ${month} ${year}, ${hours}:${minutes}`;
+  return formatFullDate(dateStr, "ru-RU", "Н/Д");
 }
 
 // Переключение направления сортировки
@@ -219,6 +210,8 @@ function clearDateFilter() {
   dateFilter.value = false;
   loadCalls();
 }
+
+// Удаляем неиспользуемую функцию getContrastColor, так как теперь всегда используем белый текст
 
 async function loadCalls() {
   // Проверяем актуальность аутентификации перед API-запросом
@@ -245,11 +238,25 @@ async function loadCalls() {
 
     if (response.success) {
       // Фильтруем записи, исключая те, у которых tag = "no used"
-      calls.value = (response.records || []).filter(call => call.tag !== "no used" && call.tag !== "no used");
-      totalRecords.value = calls.value.length; // Обновляем общее количество после фильтрации
+      const filteredCalls = (response.records || []).filter(
+        (call) => call.tag !== "no used"
+      );
+      totalRecords.value = filteredCalls.length; // Обновляем общее количество после фильтрации
 
+      // Получаем все доступные теги
       if (response.tags && response.tags.length > 0) {
         tags.value = response.tags;
+
+        // Добавляем информацию о теге к каждому звонку
+        calls.value = filteredCalls.map((call) => {
+          const tagInfo = tags.value.find((tag) => tag.name === call.tag);
+          return {
+            ...call,
+            tagInfo: tagInfo || null,
+          };
+        });
+      } else {
+        calls.value = filteredCalls;
       }
     } else {
       toast.add({

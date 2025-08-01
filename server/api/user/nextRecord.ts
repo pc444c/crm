@@ -20,19 +20,19 @@ export default defineEventHandler(async (event) => {
   try {
     // Если есть текущая запись и новый тег, обновляем её
     if (currentRecordId && newTag) {
-      // Получаем информацию о теге
-      const tagResult = await db
-        .select()
-        .from(tags)
-        .where(eq(tags.name, newTag))
-        .execute();
+      // Получаем информацию о теге (для будущего использования, если потребуется)
+      // const tagResult = await db
+      //   .select()
+      //   .from(tags)
+      //   .where(eq(tags.name, newTag))
+      //   .execute();
 
-      // Обновляем запись с новым тегом
+      // Обновляем запись с новым тегом и сохраняем ID пользователя
       await db
         .update(records)
         .set({
           tag: newTag,
-          user_id: null, // Освобождаем запись
+          user_id: userIdNum, // Сохраняем ID пользователя, который назначил тег
           status_updated_at: new Date(),
         })
         .where(eq(records.id, currentRecordId))

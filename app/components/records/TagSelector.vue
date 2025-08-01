@@ -17,25 +17,16 @@
     </div>
 
     <div v-else class="flex flex-wrap gap-2">
-      <UChip
+      <TagButton
         v-for="tag in tags"
         :key="tag.id"
+        :text="tag.name"
+        :tooltip-text="tag.about || ''"
         :color="tag.color"
-        :text-color="getContrastColor(tag.color)"
         :class="{ 'opacity-75': selectedTag !== tag.id }"
-        variant="solid"
-        class="cursor-pointer p-2 text-sm"
+        :icon="selectedTag === tag.id ? 'i-heroicons-check' : ''"
         @click="selectTag(tag.id)"
-      >
-        {{ tag.name }}
-        <template #trailing>
-          <UIcon
-            v-if="selectedTag === tag.id"
-            name="i-heroicons-check"
-            class="ml-1"
-          />
-        </template>
-      </UChip>
+      />
     </div>
 
     <div class="flex justify-end">
@@ -53,6 +44,7 @@
 
 <script setup>
 import { ref, onMounted } from "vue";
+import TagButton from "~/components/ui/TagButton.vue";
 
 const props = defineProps({
   recordId: {
@@ -77,19 +69,7 @@ const submitting = ref(false);
 const error = ref(null);
 const selectedTag = ref(null);
 
-// Вычисляем контрастный цвет для текста (белый или черный)
-function getContrastColor(bgColor) {
-  if (!bgColor) return "white";
-
-  // Простой алгоритм для определения контрастного цвета
-  const r = parseInt(bgColor.slice(1, 3), 16);
-  const g = parseInt(bgColor.slice(3, 5), 16);
-  const b = parseInt(bgColor.slice(5, 7), 16);
-
-  const brightness = (r * 299 + g * 587 + b * 114) / 1000;
-
-  return brightness > 128 ? "black" : "white";
-}
+// Удаляем неиспользуемую функцию getContrastColor, так как теперь всегда используем белый текст
 
 // Загрузка списка тегов
 async function fetchTags() {
