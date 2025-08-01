@@ -1,6 +1,6 @@
 import { db } from "../..";
 import { records, tags } from "../../schema";
-import { eq, and, asc, or, isNull } from "drizzle-orm";
+import { eq, and, asc, isNull } from "drizzle-orm";
 
 // Получить следующую запись данных для пользователя и обновить текущую
 export default defineEventHandler(async (event) => {
@@ -20,19 +20,11 @@ export default defineEventHandler(async (event) => {
   try {
     // Если есть текущая запись и новый тег, обновляем её
     if (currentRecordId && newTag) {
-      // Получаем информацию о теге (для будущего использования, если потребуется)
-      // const tagResult = await db
-      //   .select()
-      //   .from(tags)
-      //   .where(eq(tags.name, newTag))
-      //   .execute();
-
-      // Обновляем запись с новым тегом и сохраняем ID пользователя
+      // Устанавливаем финальный тег для записи
       await db
         .update(records)
         .set({
           tag: newTag,
-          user_id: userIdNum, // Сохраняем ID пользователя, который назначил тег
           status_updated_at: new Date(),
         })
         .where(eq(records.id, currentRecordId))
@@ -42,19 +34,44 @@ export default defineEventHandler(async (event) => {
     // Получаем все теги для дополнительной информации
     const allTags = await db.select().from(tags).execute();
 
-    // Ищем следующую доступную запись со статусом "no used"
-    const recordResult = await db
+    // Сначала ищем записи со статусом "used" для этого пользователя (приоритет)
+    let recordResult = await db
       .select()
       .from(records)
-      .where(
-        and(
-          or(isNull(records.tag), eq(records.tag, "no used")),
-          isNull(records.user_id)
-        )
-      )
-      .orderBy(asc(records.created_at))
+      .where(and(eq(records.tag, "used"), eq(records.user_id, userIdNum)))
+      .orderBy(asc(records.used_at))
       .limit(1)
       .execute();
+
+    // Если нет записей "used" для этого пользователя, ищем новые записи "no used"
+    if (recordResult.length === 0) {
+      recordResult = await db
+        .select()
+        .from(records)
+        .where(and(eq(records.tag, "no used"), isNull(records.user_id)))
+        .orderBy(asc(records.created_at))
+        .limit(1)
+        .execute();
+
+      // Если нашли новую запись, назначаем её пользователю
+      if (recordResult.length > 0) {
+        const record = recordResult[0];
+        await db
+          .update(records)
+          .set({
+            user_id: userIdNum,
+            tag: "used",
+            used_at: new Date(),
+            status_updated_at: new Date(),
+          })
+          .where(eq(records.id, record.id))
+          .execute();
+
+        // Обновляем локальный объект
+        record.tag = "used";
+        record.user_id = userIdNum;
+      }
+    }
 
     if (recordResult.length === 0) {
       return {
@@ -64,18 +81,6 @@ export default defineEventHandler(async (event) => {
     }
 
     const record = recordResult[0];
-
-    // Назначаем пользователя для новой записи
-    await db
-      .update(records)
-      .set({
-        user_id: userIdNum,
-        used_at: new Date(),
-        tag: "user", // Устанавливаем тег "user", когда запись назначается пользователю
-        status_updated_at: new Date(),
-      })
-      .where(eq(records.id, record.id))
-      .execute();
 
     // Находим соответствующий тег, если он есть
     let tagInfo = null;

@@ -50,11 +50,22 @@ export default defineEventHandler(async (event) => {
     // Базовые условия запроса - звонки, обработанные текущим пользователем
     let whereClause = `records.user_id = ${userData.id}`;
 
-    // Исключаем записи с определенным тегом, если указан параметр excludeTag
+    // Исключаем записи с определенными тегами
+    const excludeTags = ["no user", "no used", "used"];
     if (query.excludeTag) {
-      const excludeTag = query.excludeTag.toString();
-      whereClause += ` AND (records.tag != '${excludeTag}' AND records.tag != 'no used' AND records.tag IS NOT NULL)`;
+      // Если передан дополнительный тег для исключения, добавляем его
+      const additionalExcludeTag = query.excludeTag.toString();
+      if (!excludeTags.includes(additionalExcludeTag)) {
+        excludeTags.push(additionalExcludeTag);
+      }
     }
+    
+    // Формируем условие исключения тегов
+    const excludeTagsCondition = excludeTags.map(tag => `'${tag}'`).join(', ');
+    whereClause += ` AND (records.tag NOT IN (${excludeTagsCondition}) AND records.tag IS NOT NULL)`;
+    
+    // Логируем исключаемые теги
+    console.log(`[getCallStats] Исключаемые теги: ${excludeTags.join(', ')}`);
 
     // Добавляем фильтрацию по дате постановки тега, если указаны даты
     if (startDate && endDate) {

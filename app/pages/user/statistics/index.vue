@@ -115,12 +115,78 @@
       v-if="loading || totalCalls > 0 || filters.startDate || filters.endDate"
       class="grid grid-cols-1 lg:grid-cols-2 gap-6"
     >
-      <!-- Статистика по тегам (текстовая) -->
+      <!-- Статистика по тегам (круговая диаграмма) -->
       <UCard>
         <template #header>
           <div class="flex items-center gap-2">
-            <UIcon name="i-heroicons-tag" class="text-primary" />
+            <UIcon name="i-heroicons-chart-pie" class="text-primary" />
             <span class="font-semibold">Статистика по тегам</span>
+          </div>
+        </template>
+
+        <div v-if="tagStats.length > 0" class="h-80">
+          <ClientOnly>
+            <EChart
+              :option="pieChartOption"
+              :autoresize="true"
+              class="w-full h-full"
+            />
+            <template #fallback>
+              <div class="flex items-center justify-center h-full">
+                <UIcon name="i-heroicons-arrow-path" class="animate-spin text-4xl text-primary" />
+              </div>
+            </template>
+          </ClientOnly>
+        </div>
+
+        <div v-else class="text-center py-8 text-gray-500">
+          <UIcon name="i-heroicons-chart-pie" class="mx-auto h-12 w-12 mb-4" />
+          <p>Нет данных по тегам</p>
+        </div>
+      </UCard>
+
+      <!-- График по дням (линейная диаграмма) -->
+      <UCard>
+        <template #header>
+          <div class="flex items-center gap-2">
+            <UIcon name="i-heroicons-chart-bar" class="text-primary" />
+            <span class="font-semibold">Динамика по дням</span>
+          </div>
+        </template>
+
+        <div v-if="timeSeriesData.length > 0" class="h-80">
+          <ClientOnly>
+            <EChart
+              :option="lineChartOption"
+              :autoresize="true"
+              class="w-full h-full"
+            />
+            <template #fallback>
+              <div class="flex items-center justify-center h-full">
+                <UIcon name="i-heroicons-arrow-path" class="animate-spin text-4xl text-primary" />
+              </div>
+            </template>
+          </ClientOnly>
+        </div>
+
+        <div v-else class="text-center py-8 text-gray-500">
+          <UIcon name="i-heroicons-chart-bar" class="mx-auto h-12 w-12 mb-4" />
+          <p>Нет данных для графика</p>
+        </div>
+      </UCard>
+    </div>
+
+    <!-- Детальная статистика в виде таблиц -->
+    <div
+      v-if="loading || totalCalls > 0 || filters.startDate || filters.endDate"
+      class="grid grid-cols-1 lg:grid-cols-2 gap-6"
+    >
+      <!-- Таблица статистики по тегам -->
+      <UCard>
+        <template #header>
+          <div class="flex items-center gap-2">
+            <UIcon name="i-heroicons-table-cells" class="text-primary" />
+            <span class="font-semibold">Детальная статистика по тегам</span>
           </div>
         </template>
 
@@ -128,19 +194,25 @@
           <div
             v-for="stat in tagStats"
             :key="stat.status"
-            class="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-lg"
+            class="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
           >
-            <div class="flex items-center gap-2">
+            <div class="flex items-center gap-3">
               <div
-                class="w-3 h-3 rounded-full"
+                class="w-4 h-4 rounded-full shadow-sm"
                 :style="{ backgroundColor: getTagColor(stat.status) }"
               />
-              <span class="font-medium">{{ getTagName(stat.status) }}</span>
+              <span class="font-medium text-gray-900 dark:text-gray-100">
+                {{ getTagName(stat.status) }}
+              </span>
             </div>
-            <div class="flex items-center gap-2">
-              <span class="text-lg font-bold">{{ stat.count }}</span>
-              <span class="text-sm text-gray-500">
-                ({{ getPercentage(stat.count) }}%)
+            <div class="flex items-center gap-3">
+              <span class="text-lg font-bold text-gray-900 dark:text-gray-100">
+                {{ stat.count }}
+              </span>
+              <span
+                class="text-sm text-gray-500 dark:text-gray-400 px-2 py-1 bg-gray-200 dark:bg-gray-600 rounded-full"
+              >
+                {{ getPercentage(stat.count) }}%
               </span>
             </div>
           </div>
@@ -152,253 +224,96 @@
         </div>
       </UCard>
 
-      <!-- График по дням -->
+      <!-- Таблица динамики по дням -->
       <UCard>
         <template #header>
           <div class="flex items-center gap-2">
-            <UIcon name="i-heroicons-chart-bar" class="text-primary" />
-            <span class="font-semibold">Динамика по дням</span>
+            <UIcon name="i-heroicons-calendar-days" class="text-primary" />
+            <span class="font-semibold">Детальная динамика по дням</span>
           </div>
         </template>
 
-        <div v-if="timeSeriesData.length > 0" class="h-64 p-4">
-          <canvas
-            ref="chartCanvas"
-            class="w-full h-full rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900"
-          />
-          <!-- Отладочная информация -->
+        <div
+          v-if="timeSeriesData.length > 0"
+          class="space-y-2 max-h-80 overflow-y-auto"
+        >
           <div
-            class="text-xs text-gray-500 dark:text-gray-400 mt-2 text-center"
+            v-for="(data, index) in timeSeriesData"
+            :key="data.date"
+            class="flex items-center justify-between p-3 rounded-lg"
+            :class="
+              index % 2 === 0
+                ? 'bg-gray-50 dark:bg-gray-800'
+                : 'bg-white dark:bg-gray-900'
+            "
           >
-            Данных: {{ timeSeriesData.length }}, Пример:
-            {{
-              timeSeriesData[0]
-                ? `${timeSeriesData[0].date}: ${timeSeriesData[0].count}`
-                : "нет"
-            }}
+            <div class="flex items-center gap-3">
+              <UIcon
+                name="i-heroicons-calendar"
+                class="text-blue-500 flex-shrink-0"
+              />
+              <span class="font-medium text-gray-900 dark:text-gray-100">
+                {{ formatDate(data.date) }}
+              </span>
+            </div>
+            <div class="flex items-center gap-2">
+              <span class="text-lg font-bold text-blue-600 dark:text-blue-400">
+                {{ data.count }}
+              </span>
+              <span class="text-sm text-gray-500 dark:text-gray-400">
+                звонков
+              </span>
+            </div>
           </div>
         </div>
 
         <div v-else class="text-center py-8 text-gray-500">
           <UIcon name="i-heroicons-chart-bar" class="mx-auto h-12 w-12 mb-4" />
-          <p>Нет данных для графика</p>
+          <p>Нет данных для отображения</p>
         </div>
       </UCard>
     </div>
 
     <!-- Таблица звонков -->
-    <UCard v-if="loading || userCalls.length > 0" ref="tableCard">
-      <template #header>
-        <div class="flex items-center justify-between">
-          <div class="flex items-center gap-2">
-            <UIcon name="i-heroicons-table-cells" class="text-primary" />
-            <span class="font-semibold">
-              История звонков ({{ userCalls.length }}) - Показано:
-              {{ paginatedCalls.length }} из {{ filteredCalls.length }}
-            </span>
-          </div>
-          <div class="flex items-center gap-2">
-            <UInput
-              v-model="searchQuery"
-              placeholder="Поиск по телефону..."
-              icon="i-heroicons-magnifying-glass"
-              class="w-64"
-            />
-            <UButton
-              icon="i-heroicons-arrow-down-tray"
-              color="success"
-              variant="outline"
-              @click="exportTable"
-            >
-              Экспорт
-            </UButton>
-          </div>
+    <DataTable
+      ref="tableCard"
+      :items="userCalls"
+      :columns="callsColumns"
+      :loading="loading"
+      title="История звонков"
+      header-icon="i-heroicons-table-cells"
+      search-key="phone"
+      search-placeholder="Поиск по телефону..."
+      :page-size="20"
+      empty-message="Записи не найдены"
+      show-export
+      @export="exportTable"
+      @page-change="scrollToTable"
+    >
+      <template #cell-tag="{ item }">
+        <div v-if="hasValidTag(String(item.tag))" class="inline-block">
+          <TagButton
+            :text="getTagName(String(item.tag))"
+            :color="getTagColor(String(item.tag))"
+            :tooltip-text="getTagName(String(item.tag))"
+            class="text-xs"
+          />
         </div>
+        <span v-else class="text-gray-400 text-sm">Без тега</span>
       </template>
 
-      <!-- Стилизованная таблица -->
-      <div v-if="paginatedCalls.length > 0" class="overflow-hidden">
-        <div class="overflow-x-auto">
-          <table class="w-full">
-            <thead>
-              <tr
-                class="bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700"
-              >
-                <th
-                  class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700"
-                  @click="toggleSort('id')"
-                >
-                  <div class="flex items-center gap-1">
-                    ID
-                    <UIcon
-                      v-if="sortBy === 'id'"
-                      :name="
-                        sortOrder === 'asc'
-                          ? 'i-heroicons-chevron-up'
-                          : 'i-heroicons-chevron-down'
-                      "
-                      class="w-3 h-3"
-                    />
-                  </div>
-                </th>
-                <th
-                  class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700"
-                  @click="toggleSort('phone')"
-                >
-                  <div class="flex items-center gap-1">
-                    Телефон
-                    <UIcon
-                      v-if="sortBy === 'phone'"
-                      :name="
-                        sortOrder === 'asc'
-                          ? 'i-heroicons-chevron-up'
-                          : 'i-heroicons-chevron-down'
-                      "
-                      class="w-3 h-3"
-                    />
-                  </div>
-                </th>
-                <th
-                  class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700"
-                  @click="toggleSort('tag')"
-                >
-                  <div class="flex items-center gap-1">
-                    Тег
-                    <UIcon
-                      v-if="sortBy === 'tag'"
-                      :name="
-                        sortOrder === 'asc'
-                          ? 'i-heroicons-chevron-up'
-                          : 'i-heroicons-chevron-down'
-                      "
-                      class="w-3 h-3"
-                    />
-                  </div>
-                </th>
-                <th
-                  class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700"
-                  @click="toggleSort('status_updated_at')"
-                >
-                  <div class="flex items-center gap-1">
-                    Дата обновления
-                    <UIcon
-                      v-if="sortBy === 'status_updated_at'"
-                      :name="
-                        sortOrder === 'asc'
-                          ? 'i-heroicons-chevron-up'
-                          : 'i-heroicons-chevron-down'
-                      "
-                      class="w-3 h-3"
-                    />
-                  </div>
-                </th>
-              </tr>
-            </thead>
-            <tbody
-              class="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700"
-            >
-              <tr
-                v-for="call in paginatedCalls"
-                :key="call.id"
-                class="hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
-              >
-                <td
-                  class="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-gray-100"
-                >
-                  {{ call.id }}
-                </td>
-                <td class="px-4 py-3 whitespace-nowrap text-sm">
-                  <span class="text-gray-900 dark:text-gray-100 font-mono">
-                    {{ call.phone }}
-                  </span>
-                </td>
-                <td class="px-4 py-3 whitespace-nowrap text-sm">
-                  <div v-if="hasValidTag(call.tag)" class="inline-block">
-                    <TagButton
-                      :text="getTagName(call.tag)"
-                      :color="getTagColor(call.tag)"
-                      :tooltip-text="getTagName(call.tag)"
-                      class="text-xs"
-                    />
-                  </div>
-                  <span v-else class="text-gray-400 text-sm">Без тега</span>
-                </td>
-                <td
-                  class="px-4 py-3 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100"
-                >
-                  {{ formatDateTime(call.status_updated_at) }}
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      <!-- Сообщение о пустом состоянии -->
-      <div v-else-if="!loading" class="text-center py-8 text-gray-500">
-        <UIcon name="i-heroicons-table-cells" class="mx-auto h-12 w-12 mb-4" />
-        <p>Записи не найдены</p>
-      </div>
-
-      <!-- Пагинация -->
-      <div
-        v-if="filteredCalls.length > pageSize"
-        class="flex justify-center mt-6 pt-4 border-t border-gray-200 dark:border-gray-700"
-      >
-        <!-- Простая пагинация с кнопками -->
-        <div class="flex items-center gap-2">
-          <UButton
-            :disabled="currentPage <= 1"
-            size="sm"
-            variant="outline"
-            icon="i-heroicons-chevron-left"
-            @click="goToPage(1)"
-          >
-            Первая
-          </UButton>
-
-          <UButton
-            :disabled="currentPage <= 1"
-            size="sm"
-            variant="outline"
-            icon="i-heroicons-chevron-left"
-            @click="prevPage()"
-          >
-            Пред
-          </UButton>
-
-          <span class="px-3 py-2 text-sm">
-            Страница {{ currentPage }} из {{ totalPages }}
-          </span>
-
-          <UButton
-            :disabled="currentPage >= totalPages"
-            size="sm"
-            variant="outline"
-            @click="nextPage()"
-          >
-            След
-            <UIcon name="i-heroicons-chevron-right" class="ml-1" />
-          </UButton>
-
-          <UButton
-            :disabled="currentPage >= totalPages"
-            size="sm"
-            variant="outline"
-            @click="goToPage(totalPages)"
-          >
-            Последняя
-            <UIcon name="i-heroicons-chevron-right" class="ml-1" />
-          </UButton>
-        </div>
-      </div>
-    </UCard>
+      <template #cell-status_updated_at="{ value }">
+        {{ formatDateTime(String(value)) }}
+      </template>
+    </DataTable>
   </div>
 </template>
 
 <script setup lang="ts">
 import { userApi } from "@/utils/api";
 import TagButton from "@/components/ui/TagButton.vue";
+import DataTable from "@/components/ui/DataTable.vue";
+import EChart from "@/components/chart/EChart.vue";
 
 // Интерфейсы для типизации данных
 interface CallStat {
@@ -441,28 +356,46 @@ definePageMeta({
 
 // Реактивные данные
 const loading = ref(false);
-const searchQuery = ref("");
-const currentPage = ref(1);
-const pageSize = 20;
 const tableCard = ref();
-const chartCanvas = ref();
-const chartInstance = ref<any>(null);
+
+// Конфигурация колонок для таблицы
+const callsColumns = [
+  {
+    key: "id",
+    label: "ID",
+    sortable: true,
+    class: "font-medium text-gray-900 dark:text-gray-100",
+  },
+  {
+    key: "phone",
+    label: "Телефон",
+    sortable: true,
+    class: "text-gray-900 dark:text-gray-100 font-mono",
+  },
+  {
+    key: "tag",
+    label: "Тег",
+    sortable: true,
+  },
+  {
+    key: "status_updated_at",
+    label: "Дата обновления",
+    sortable: true,
+    class: "text-gray-900 dark:text-gray-100",
+  },
+];
 
 // Плавная прокрутка к таблице при смене страницы
-watch(currentPage, () => {
+function scrollToTable() {
   nextTick(() => {
-    if (tableCard.value) {
+    if (tableCard.value?.$el) {
       tableCard.value.$el.scrollIntoView({
         behavior: "smooth",
         block: "start",
       });
     }
   });
-});
-
-// Сортировка
-const sortBy = ref<string>("");
-const sortOrder = ref<"asc" | "desc">("desc");
+}
 
 // Фильтры
 const filters = ref({
@@ -487,7 +420,7 @@ const statisticsData = ref<{
 const tagStats = computed(() => {
   const stats = statisticsData.value.callStats || [];
   return stats.filter(
-    (stat) => stat.status !== "no user" && stat.status !== "no used"
+    (stat) => stat.status !== "no user" && stat.status !== "no used" && stat.status !== "used"
   );
 });
 const timeSeriesData = computed(
@@ -496,10 +429,69 @@ const timeSeriesData = computed(
 const userCalls = computed(() => {
   const calls = statisticsData.value.userCalls || [];
   return calls.filter(
-    (call) => call.tag !== "no user" && call.tag !== "no used"
+    (call) => call.tag !== "no user" && call.tag !== "no used" && call.tag !== "used"
   );
 });
 const availableTags = computed(() => statisticsData.value.tags || []);
+
+// Вспомогательные функции
+function getTagColor(tagName: string): string {
+  if (!tagName || tagName === "null" || tagName === "undefined")
+    return "#6B7280";
+  const tag = availableTags.value.find((t) => t.name === tagName);
+  return tag?.color || "#6B7280";
+}
+
+function getTagName(tagName: string): string {
+  if (!tagName || tagName === "null" || tagName === "undefined")
+    return "Не указан";
+  const tag = availableTags.value.find((t) => t.name === tagName);
+  return tag?.name || tagName;
+}
+
+function getPercentage(count: number): string {
+  if (totalCalls.value === 0) return "0";
+  return ((Number(count) / totalCalls.value) * 100).toFixed(1);
+}
+
+function formatDate(dateString: string): string {
+  try {
+    const date = new Date(dateString);
+    return date.toLocaleDateString("ru-RU", {
+      weekday: "short",
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+    });
+  } catch {
+    return dateString;
+  }
+}
+
+function formatDateTime(dateString: string): string {
+  if (!dateString) return "Не указано";
+  try {
+    const date = new Date(dateString);
+    return date.toLocaleString("ru-RU", {
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  } catch {
+    return "Неверная дата";
+  }
+}
+
+function hasValidTag(tagName: string): boolean {
+  return !!(
+    tagName &&
+    tagName !== "null" &&
+    tagName !== "undefined" &&
+    tagName.trim()
+  );
+}
 
 const totalCalls = computed(() => {
   return tagStats.value.reduce((sum, stat) => sum + Number(stat.count), 0);
@@ -527,343 +519,180 @@ const averagePerDay = computed(() => {
   return Math.round(total / timeSeriesData.value.length);
 });
 
-// Фильтрованные звонки для таблицы
-const filteredCalls = computed(() => {
-  let calls = [...userCalls.value];
+// Опции для круговой диаграммы (статистика по тегам)
+const pieChartOption = computed(() => {
+  // Безопасная проверка для SSR
+  const isDark = typeof document !== 'undefined' 
+    ? document?.documentElement?.classList?.contains("dark") ?? false
+    : false;
 
-  if (searchQuery.value) {
-    const query = searchQuery.value.toLowerCase();
-    calls = calls.filter((call) => {
-      const phone = call.phone || "";
-      return phone.includes(query);
-    });
-  }
+  const data = tagStats.value.map((stat) => ({
+    name: getTagName(stat.status),
+    value: Number(stat.count),
+    itemStyle: {
+      color: getTagColor(stat.status),
+    },
+  }));
 
-  // Сортировка
-  if (sortBy.value) {
-    calls.sort((a, b) => {
-      const aVal = (a as Record<string, unknown>)[sortBy.value] || "";
-      const bVal = (b as Record<string, unknown>)[sortBy.value] || "";
-
-      let comparison = 0;
-      if (typeof aVal === "string" && typeof bVal === "string") {
-        comparison = aVal.localeCompare(bVal);
-      } else if (typeof aVal === "number" && typeof bVal === "number") {
-        comparison = aVal - bVal;
-      } else {
-        comparison = String(aVal).localeCompare(String(bVal));
-      }
-
-      return sortOrder.value === "asc" ? comparison : -comparison;
-    });
-  }
-
-  return calls;
-});
-
-// Пагинированные звонки
-const paginatedCalls = computed(() => {
-  const start = (currentPage.value - 1) * pageSize;
-  const end = start + pageSize;
-  return filteredCalls.value.slice(start, end);
-});
-
-const totalPages = computed(() =>
-  Math.ceil(filteredCalls.value.length / pageSize)
-);
-
-// Функции для работы с графиком
-function createChart() {
-  console.log("Создание графика, данных:", timeSeriesData.value.length);
-
-  if (!chartCanvas.value || timeSeriesData.value.length === 0) {
-    console.log("Нет канваса или данных");
-    return;
-  }
-
-  const canvas = chartCanvas.value;
-  const ctx = canvas.getContext("2d");
-
-  // Устанавливаем размеры канваса
-  const rect = canvas.getBoundingClientRect();
-  canvas.width = rect.width * window.devicePixelRatio;
-  canvas.height = rect.height * window.devicePixelRatio;
-  ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
-
-  const data = timeSeriesData.value;
-  const maxValue = Math.max(...data.map((item) => Number(item.count)), 1);
-  const padding = 50;
-  const chartWidth = rect.width - padding * 2;
-  const chartHeight = rect.height - padding * 2;
-
-  console.log("Размеры графика:", {
-    width: rect.width,
-    height: rect.height,
-    maxValue,
-  });
-
-  // Определяем цвета для темной/светлой темы
-  const isDark = document.documentElement.classList.contains("dark");
-  const colors = {
-    background: isDark ? "#1f2937" : "#ffffff",
-    gridLine: isDark ? "#374151" : "#e5e7eb",
-    text: isDark ? "#d1d5db" : "#6b7280",
-    primary: "rgb(34, 197, 94)", // green-500
-    primaryLight: isDark ? "rgba(34, 197, 94, 0.2)" : "rgba(34, 197, 94, 0.1)",
-    accent: isDark ? "#f3f4f6" : "#374151",
+  return {
+    tooltip: {
+      trigger: "item",
+      formatter: "{a} <br/>{b}: {c} ({d}%)",
+      backgroundColor: isDark
+        ? "rgba(31, 41, 55, 0.95)"
+        : "rgba(255, 255, 255, 0.95)",
+      borderColor: isDark
+        ? "rgba(75, 85, 99, 0.5)"
+        : "rgba(229, 231, 235, 0.5)",
+      textStyle: {
+        color: isDark ? "#f3f4f6" : "#374151",
+      },
+    },
+    legend: {
+      orient: "vertical",
+      left: "left",
+      textStyle: {
+        color: isDark ? "#d1d5db" : "#374151",
+      },
+    },
+    series: [
+      {
+        name: "Звонки",
+        type: "pie",
+        radius: ["40%", "70%"],
+        center: ["60%", "50%"],
+        avoidLabelOverlap: false,
+        itemStyle: {
+          borderRadius: 6,
+          borderColor: isDark ? "#1f2937" : "#fff",
+          borderWidth: 2,
+        },
+        label: {
+          show: false,
+          position: "center",
+        },
+        emphasis: {
+          label: {
+            show: true,
+            fontSize: 20,
+            fontWeight: "bold",
+            color: isDark ? "#f3f4f6" : "#374151",
+          },
+        },
+        labelLine: {
+          show: false,
+        },
+        data,
+      },
+    ],
   };
+});
 
-  // Очищаем канвас
-  ctx.clearRect(0, 0, rect.width, rect.height);
+// Опции для линейной диаграммы (динамика по дням)
+const lineChartOption = computed(() => {
+  // Безопасная проверка для SSR
+  const isDark = typeof document !== 'undefined' 
+    ? document?.documentElement?.classList?.contains("dark") ?? false
+    : false;
 
-  // Рисуем фон
-  ctx.fillStyle = colors.background;
-  ctx.fillRect(0, 0, rect.width, rect.height);
-
-  // Рисуем сетку
-  ctx.strokeStyle = colors.gridLine;
-  ctx.lineWidth = 1;
-
-  // Горизонтальные линии сетки
-  for (let i = 0; i <= 5; i++) {
-    const y = padding + (i / 5) * chartHeight;
-    ctx.beginPath();
-    ctx.moveTo(padding, y);
-    ctx.lineTo(padding + chartWidth, y);
-    ctx.stroke();
-
-    // Подписи по оси Y
-    ctx.fillStyle = colors.text;
-    ctx.font = "12px ui-sans-serif, system-ui, sans-serif";
-    ctx.textAlign = "right";
-    const value = Math.round(maxValue * (1 - i / 5));
-    ctx.fillText(value.toString(), padding - 10, y + 4);
-  }
-
-  // Рисуем область под графиком
-  if (data.length > 1) {
-    const gradient = ctx.createLinearGradient(
-      0,
-      padding,
-      0,
-      padding + chartHeight
-    );
-    gradient.addColorStop(0, colors.primaryLight);
-    gradient.addColorStop(1, "rgba(34, 197, 94, 0)");
-
-    ctx.fillStyle = gradient;
-    ctx.beginPath();
-
-    data.forEach((item, index) => {
-      const x = padding + (index / Math.max(data.length - 1, 1)) * chartWidth;
-      const y =
-        padding + chartHeight - (Number(item.count) / maxValue) * chartHeight;
-
-      if (index === 0) {
-        ctx.moveTo(x, y);
-      } else {
-        ctx.lineTo(x, y);
-      }
-    });
-
-    ctx.lineTo(padding + chartWidth, padding + chartHeight);
-    ctx.lineTo(padding, padding + chartHeight);
-    ctx.closePath();
-    ctx.fill();
-  }
-
-  // Рисуем линию графика
-  ctx.strokeStyle = colors.primary;
-  ctx.lineWidth = 3;
-  ctx.lineCap = "round";
-  ctx.lineJoin = "round";
-  ctx.beginPath();
-
-  data.forEach((item, index) => {
-    const x = padding + (index / Math.max(data.length - 1, 1)) * chartWidth;
-    const y =
-      padding + chartHeight - (Number(item.count) / maxValue) * chartHeight;
-
-    if (index === 0) {
-      ctx.moveTo(x, y);
-    } else {
-      ctx.lineTo(x, y);
-    }
-  });
-  ctx.stroke();
-
-  // Рисуем точки
-  data.forEach((item, index) => {
-    const x = padding + (index / Math.max(data.length - 1, 1)) * chartWidth;
-    const y =
-      padding + chartHeight - (Number(item.count) / maxValue) * chartHeight;
-
-    // Внешний круг (белый/темный фон)
-    ctx.fillStyle = colors.background;
-    ctx.beginPath();
-    ctx.arc(x, y, 6, 0, 2 * Math.PI);
-    ctx.fill();
-
-    // Внутренний круг (основной цвет)
-    ctx.fillStyle = colors.primary;
-    ctx.beginPath();
-    ctx.arc(x, y, 4, 0, 2 * Math.PI);
-    ctx.fill();
-
-    // Подписи значений над точками
-    if (Number(item.count) > 0) {
-      ctx.fillStyle = colors.accent;
-      ctx.font = "bold 11px ui-sans-serif, system-ui, sans-serif";
-      ctx.textAlign = "center";
-      ctx.fillText(item.count.toString(), x, y - 15);
-    }
-  });
-
-  // Подписи дат
-  ctx.fillStyle = colors.text;
-  ctx.font = "11px ui-sans-serif, system-ui, sans-serif";
-  ctx.textAlign = "center";
-  data.forEach((item, index) => {
-    const x = padding + (index / Math.max(data.length - 1, 1)) * chartWidth;
+  const dates = timeSeriesData.value.map((item) => {
     const date = new Date(item.date);
-    const label = date.toLocaleDateString("ru-RU", {
+    return date.toLocaleDateString("ru-RU", {
       month: "short",
       day: "numeric",
     });
-    ctx.fillText(label, x, rect.height - 15);
   });
 
-  // Добавляем подпись оси Y
-  ctx.save();
-  ctx.translate(15, padding + chartHeight / 2);
-  ctx.rotate(-Math.PI / 2);
-  ctx.fillStyle = colors.text;
-  ctx.font = "12px ui-sans-serif, system-ui, sans-serif";
-  ctx.textAlign = "center";
-  ctx.fillText("Количество звонков", 0, 0);
-  ctx.restore();
+  const values = timeSeriesData.value.map((item) => Number(item.count));
 
-  console.log("График создан");
-}
-
-function updateChart() {
-  console.log("Обновление графика");
-  setTimeout(() => {
-    createChart();
-  }, 100);
-}
-
-// Следим за изменениями данных для обновления графика
-watch(
-  timeSeriesData,
-  (newData) => {
-    console.log("Данные изменились:", newData.length);
-    updateChart();
-  },
-  { deep: true }
-);
-
-// Создание графика после монтирования
-onMounted(() => {
-  console.log("Компонент смонтирован");
-  window.addEventListener("resize", updateChart);
-
-  // Наблюдаем за изменением темы
-  const observer = new MutationObserver(() => {
-    updateChart();
-  });
-
-  observer.observe(document.documentElement, {
-    attributes: true,
-    attributeFilter: ["class"],
-  });
-
-  // Пробуем создать график через небольшую задержку
-  setTimeout(updateChart, 500);
-
-  // Сохраняем observer для очистки
-  chartInstance.value = observer;
+  return {
+    tooltip: {
+      trigger: "axis",
+      backgroundColor: isDark
+        ? "rgba(31, 41, 55, 0.95)"
+        : "rgba(255, 255, 255, 0.95)",
+      borderColor: isDark
+        ? "rgba(75, 85, 99, 0.5)"
+        : "rgba(229, 231, 235, 0.5)",
+      textStyle: {
+        color: isDark ? "#f3f4f6" : "#374151",
+      },
+    },
+    grid: {
+      left: "3%",
+      right: "4%",
+      bottom: "3%",
+      containLabel: true,
+    },
+    xAxis: {
+      type: "category",
+      boundaryGap: false,
+      data: dates,
+      axisLine: {
+        lineStyle: {
+          color: isDark ? "#6b7280" : "#d1d5db",
+        },
+      },
+      axisLabel: {
+        color: isDark ? "#d1d5db" : "#6b7280",
+      },
+    },
+    yAxis: {
+      type: "value",
+      axisLine: {
+        lineStyle: {
+          color: isDark ? "#6b7280" : "#d1d5db",
+        },
+      },
+      axisLabel: {
+        color: isDark ? "#d1d5db" : "#6b7280",
+      },
+      splitLine: {
+        lineStyle: {
+          color: isDark ? "#374151" : "#f3f4f6",
+        },
+      },
+    },
+    series: [
+      {
+        name: "Звонки",
+        type: "line",
+        smooth: true,
+        symbol: "circle",
+        symbolSize: 8,
+        lineStyle: {
+          color: "#22c55e",
+          width: 3,
+        },
+        itemStyle: {
+          color: "#22c55e",
+          borderColor: isDark ? "#1f2937" : "#fff",
+          borderWidth: 2,
+        },
+        areaStyle: {
+          color: {
+            type: "linear",
+            x: 0,
+            y: 0,
+            x2: 0,
+            y2: 1,
+            colorStops: [
+              {
+                offset: 0,
+                color: "rgba(34, 197, 94, 0.3)",
+              },
+              {
+                offset: 1,
+                color: "rgba(34, 197, 94, 0.1)",
+              },
+            ],
+          },
+        },
+        data: values,
+      },
+    ],
+  };
 });
-
-onUnmounted(() => {
-  window.removeEventListener("resize", updateChart);
-  if (chartInstance.value && chartInstance.value.disconnect) {
-    chartInstance.value.disconnect();
-  }
-  chartInstance.value = null;
-});
-
-// Методы
-function getTagColor(tagName: string): string {
-  if (!tagName || tagName === "null" || tagName === "undefined")
-    return "#6B7280";
-  const tag = availableTags.value.find((t) => t.name === tagName);
-  return tag?.color || "#6B7280";
-}
-
-function getTagName(tagName: string): string {
-  if (!tagName || tagName === "null" || tagName === "undefined")
-    return "Не указан";
-  const tag = availableTags.value.find((t) => t.name === tagName);
-  return tag?.name || tagName;
-}
-
-function hasValidTag(tagName: string): boolean {
-  return !!(
-    tagName &&
-    tagName !== "null" &&
-    tagName !== "undefined" &&
-    tagName.trim()
-  );
-}
-
-function getPercentage(count: number): string {
-  if (totalCalls.value === 0) return "0";
-  return ((Number(count) / totalCalls.value) * 100).toFixed(1);
-}
-
-function formatDateTime(dateString: string): string {
-  if (!dateString) return "Не указано";
-  try {
-    const date = new Date(dateString);
-    return date.toLocaleString("ru-RU", {
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-  } catch {
-    return "Неверная дата";
-  }
-}
-
-function toggleSort(column: string) {
-  if (sortBy.value === column) {
-    sortOrder.value = sortOrder.value === "asc" ? "desc" : "asc";
-  } else {
-    sortBy.value = column;
-    sortOrder.value = "asc";
-  }
-}
-
-function goToPage(page: number) {
-  if (page >= 1 && page <= totalPages.value) {
-    currentPage.value = page;
-  }
-}
-
-function nextPage() {
-  if (currentPage.value < totalPages.value) {
-    currentPage.value++;
-  }
-}
-
-function prevPage() {
-  if (currentPage.value > 1) {
-    currentPage.value--;
-  }
-}
 
 function setPeriod(days: number) {
   const today = new Date();
@@ -889,8 +718,8 @@ async function loadStatistics() {
       params.append("endDate", filters.value.endDate);
     }
 
-    // Исключаем записи с тегом "no user"
-    params.append("excludeTag", "no user");
+    // Исключаем записи с системными тегами (API сам обработает базовые исключения)
+    // Дополнительные исключения можно добавить при необходимости
 
     const response = await userApi(
       `/api/user/getCallStats?${params.toString()}`
@@ -900,10 +729,6 @@ async function loadStatistics() {
       console.log("Полученные данные:", response.data);
       console.log("timeSeriesData:", response.data.timeSeriesData);
       statisticsData.value = response.data;
-      // Создаем график после загрузки данных
-      nextTick(() => {
-        updateChart();
-      });
     } else {
       throw new Error(response.message || "Ошибка загрузки статистики");
     }
@@ -924,7 +749,7 @@ function exportTable() {
   try {
     // Простой экспорт в CSV
     const headers = ["ID", "Телефон", "Тег", "Дата обновления"];
-    const rows = filteredCalls.value.map((call) => [
+    const rows = userCalls.value.map((call) => [
       call.id,
       call.phone,
       getTagName(call.tag),
@@ -964,11 +789,6 @@ function exportTable() {
 onMounted(() => {
   // Устанавливаем дефолтные даты - последние 7 дней
   setPeriod(7);
-});
-
-// Следим за изменениями страницы для сброса пагинации при поиске
-watch(searchQuery, () => {
-  currentPage.value = 1;
 });
 </script>
 

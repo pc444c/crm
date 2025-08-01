@@ -1,7 +1,7 @@
 import { db } from "~~/server";
 import { users, records, tags } from "~~/server/schema";
 import { defineEventHandler, readBody } from "h3";
-import { eq, and, asc, or, isNull } from "drizzle-orm";
+import { eq, and, asc, isNull } from "drizzle-orm";
 
 // Получить запись данных для пользователя
 export default defineEventHandler(async (event) => {
@@ -38,22 +38,30 @@ export default defineEventHandler(async (event) => {
     // Получаем список всех тегов
     const allTags = await db.select().from(tags).execute();
 
-    // Ищем запись, которая уже назначена пользователю или не использована
-    const recordResult = await db
+    // Сначала ищем записи со статусом "used" (приоритет)
+    let recordResult = await db
       .select()
       .from(records)
       .where(
-        or(
-          eq(records.user_id, userId), // Записи уже назначенные пользователю
-          and(
-            or(isNull(records.tag), eq(records.tag, "no used")),
-            isNull(records.user_id)
-          ) // Или записи без тега / с тегом "no used" и без назначенного пользователя
+        and(
+          eq(records.tag, "used"),
+          eq(records.user_id, userId) // Только записи этого пользователя
         )
       )
-      .orderBy(asc(records.created_at))
+      .orderBy(asc(records.used_at))
       .limit(1)
       .execute();
+
+    // Если нет записей "used" для этого пользователя, ищем новые записи "no used"
+    if (recordResult.length === 0) {
+      recordResult = await db
+        .select()
+        .from(records)
+        .where(and(eq(records.tag, "no used"), isNull(records.user_id)))
+        .orderBy(asc(records.created_at))
+        .limit(1)
+        .execute();
+    }
 
     const record = recordResult[0];
 
@@ -66,16 +74,21 @@ export default defineEventHandler(async (event) => {
 
     // Если запись не назначена пользователю и не надо пропускать маркировку
     if (!record.user_id && !skipMarking) {
-      // Обновляем запись - назначаем пользователя и время использования
+      // Обновляем запись - назначаем пользователя, устанавливаем статус "used" и время использования
       await db
         .update(records)
         .set({
           user_id: userId,
+          tag: "used", // Меняем статус с "no used" на "used"
           used_at: new Date(),
           status_updated_at: new Date(),
         })
         .where(eq(records.id, record.id))
         .execute();
+
+      // Обновляем локальный объект записи
+      record.tag = "used";
+      record.user_id = userId;
     }
 
     // Находим соответствующий тег, если он есть

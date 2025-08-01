@@ -18,29 +18,9 @@
           <UIcon name="i-heroicons-arrow-path" class="animate-spin text-4xl" />
         </div>
 
-        <div
-          v-else-if="!currentRecord && !continueWorking"
-          class="text-center py-8"
-        >
+        <div v-else-if="!currentRecord" class="text-center py-8">
           <p class="text-gray-400 mb-4">Нет доступных записей</p>
-          <UButton color="primary" @click="fetchRecord">
-            Начать работу
-          </UButton>
         </div>
-
-        <template v-else-if="!currentRecord && continueWorking">
-          <div class="text-center py-8">
-            <p class="text-xl mb-4">Вы хотите продолжить работу?</p>
-            <div class="flex justify-center gap-4">
-              <UButton color="primary" @click="fetchRecord">
-                Продолжить работать
-              </UButton>
-              <UButton color="gray" @click="continueWorking = false">
-                Закончить
-              </UButton>
-            </div>
-          </div>
-        </template>
 
         <template v-else>
           <!-- Панель статуса -->
@@ -189,7 +169,6 @@ const isUpdatingTag = ref(false);
 const currentRecord = ref(null);
 const listtag = ref([]);
 const ModalData = ref({});
-const continueWorking = ref(false);
 const editingComment = ref(false);
 const commentText = ref("");
 const isSavingComment = ref(false);
@@ -284,7 +263,6 @@ const fetchRecord = async () => {
     if (response && response.success && response.record) {
       currentRecord.value = response.record;
       commentText.value = response.record.description || "";
-      continueWorking.value = false;
 
       toast.add({
         title: "Успешно",
@@ -299,7 +277,6 @@ const fetchRecord = async () => {
         color: "warning",
       });
       currentRecord.value = null;
-      continueWorking.value = false; // Сбрасываем флаг, чтобы показать кнопку "Начать работу"
     }
   } catch (error) {
     console.error("Ошибка при получении записи:", error);
@@ -321,72 +298,6 @@ const fetchRecord = async () => {
       color: "error",
     });
     currentRecord.value = null;
-  } finally {
-    isLoading.value = false;
-  }
-};
-
-// Получить следующую запись
-const _fetchNextRecord = async () => {
-  // Проверяем актуальность аутентификации перед каждым запросом
-  await auth.checkAuth();
-
-  if (!auth.getId || !currentRecord.value || !auth.isAuthenticated) return;
-
-  isLoading.value = true;
-  console.log("Запрашиваем следующую запись для пользователя ID:", auth.getId);
-
-  try {
-    const response = await $fetch("/api/user/nextRecord", {
-      method: "POST",
-      body: {
-        userId: auth.getId,
-        currentRecordId: currentRecord.value.id,
-        newTag: currentRecord.value.tag || "no used",
-      },
-    });
-
-    if (response && response.success && response.record) {
-      currentRecord.value = response.record;
-      commentText.value = response.record.description || "";
-      continueWorking.value = false;
-
-      toast.add({
-        title: "Успешно",
-        description: "Загружена новая запись",
-        color: "success",
-      });
-    } else {
-      currentRecord.value = null;
-      continueWorking.value = true;
-
-      toast.add({
-        title: "Информация",
-        description:
-          response && response.error ? response.error : "БАЗА ЗАКОНЧИЛАСЬ",
-        color: "warning",
-      });
-    }
-  } catch (error) {
-    console.error("Ошибка при получении записи:", error);
-
-    // Проверка на ошибку USER_NOT_EXISTS
-    if (
-      error.data &&
-      (error.data.code === "USER_NOT_EXISTS" ||
-        error.data.data?.errorCode === "USER_NOT_EXISTS")
-    ) {
-      auth.setErrorCode("USER_NOT_EXISTS");
-      navigateTo("/?error=USER_NOT_EXISTS");
-      return;
-    }
-
-    toast.add({
-      title: "Ошибка",
-      description: "Не удалось получить запись",
-      color: "error",
-    });
-    continueWorking.value = true;
   } finally {
     isLoading.value = false;
   }
@@ -447,21 +358,11 @@ const confirmTagChange = async () => {
       // Закрываем модальное окно
       isOpen.value = false;
 
-      toast.add({
-        title: "Готово",
-        description:
-          "Запись обработана. Для продолжения нажмите 'Начать работу'.",
-        color: "success",
-        timeout: 5000,
-      });
-
       // Обновляем список звонков через событие
       window.dispatchEvent(new CustomEvent("call-list-updated"));
 
-      // После назначения тега не загружаем автоматически следующую запись
-      // Просто сбрасываем текущую запись и показываем кнопку "Начать работу"
-      currentRecord.value = null;
-      continueWorking.value = false;
+      // После назначения тега автоматически загружаем следующую запись
+      await fetchRecord();
     } else {
       throw new Error(response?.message || "Не удалось назначить тег");
     }
@@ -559,8 +460,8 @@ onMounted(async () => {
   // Если все в порядке, продолжаем инициализацию
   if (auth.isAuthenticated) {
     getTags();
-    // Не загружаем запись автоматически, пользователь должен нажать "Начать работу"
-    // fetchRecord();
+    // Автоматически загружаем запись при монтировании
+    fetchRecord();
   }
 });
 </script>

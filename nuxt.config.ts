@@ -23,6 +23,21 @@ export default defineNuxtConfig({
   },
     css: ['~/assets/css/main.css'],
     vite:{
-      
+      define: {
+        global: 'globalThis',
+      },
+      optimizeDeps: {
+        include: ['echarts/core', 'echarts/charts', 'echarts/components', 'echarts/renderers']
+      }
+    },
+    build: {
+      transpile: ['vue-echarts', 'echarts', 'resize-detector']
+    },
+    nitro: {
+      esbuild: {
+        options: {
+          target: 'esnext'
+        }
+      }
     }
 })

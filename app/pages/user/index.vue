@@ -3,7 +3,6 @@
     <div class="flex flex-col xl:flex-row gap-6">
       <div class="flex flex-col gap-6 w-full xl:w-3/4">
         <user-base-info />
-        <user-last-calls />
       </div>
       <div class="w-full xl:w-1/4">
         <user-text-script class="h-full" />
