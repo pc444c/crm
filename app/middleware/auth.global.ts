@@ -1,5 +1,9 @@
 import { useAuthStore } from "@/store/useAuth";
 
+// Кэшируем результат проверки аутентификации
+let lastAuthCheck = 0;
+let authCheckPromise: Promise<boolean> | null = null;
+
 export default defineNuxtRouteMiddleware(async (to) => {
   const auth = useAuthStore();
 
@@ -16,18 +20,21 @@ export default defineNuxtRouteMiddleware(async (to) => {
   }
 
   try {
-    // Проверяем токен
-    const authResult = await auth.checkAuth();
+    // Оптимизация: проверяем токен только если прошло больше 30 секунд с последней проверки
+    // или если пользователь не аутентифицирован
+    const now = Date.now();
+    if (!auth.isAuthenticated || now - lastAuthCheck > 30000 || !authCheckPromise) {
+      authCheckPromise = auth.checkAuth();
+      lastAuthCheck = now;
+    }
+    
+    // Ждем результата проверки
+    await authCheckPromise;
 
-    if (import.meta.client) {
+    if (import.meta.client && process.env.NODE_ENV !== 'production') {
       console.debug(
-        `[Auth Middleware] Проверка доступа для ${to.path}, роль: ${auth.getRole}, аутентификация: ${auth.isAuthenticated}`
+        `[Auth Middleware] Доступ к ${to.path}, роль: ${auth.getRole}, аутентифицирован: ${auth.isAuthenticated}`
       );
-
-      // Если есть query параметры, логируем и их
-      if (Object.keys(to.query).length > 0) {
-        console.debug(`[Auth Middleware] Query параметры:`, to.query);
-      }
     }
 
     // Если пользователь не аутентифицирован или произошла ошибка с кодом USER_NOT_EXISTS,

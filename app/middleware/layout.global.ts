@@ -4,12 +4,7 @@ export default defineNuxtRouteMiddleware(async (to) => {
   const userStore = useAuthStore();
   const toast = useToast();
 
-  // Если есть метод инициализации — вызывай его и жди
-  // await userStore.init?.();
-
-  // Пример ожидания, чтобы состояние восстановилось
-  await new Promise((r) => setTimeout(r, 10));
-
+  // Получаем ID пользователя напрямую из store
   const userId = userStore.getId;
 
   if (userId && to.path === "/") {

@@ -4,6 +4,10 @@ import { db } from "~~/server";
 import { users } from "~~/server/schema";
 import { eq } from "drizzle-orm";
 
+// Кэш для пользователей, чтобы уменьшить количество запросов к БД
+const userCache = new Map();
+const USER_CACHE_TTL = 60000; // 1 минута в миллисекундах
+
 // Маршруты, требующие роли администратора
 const adminRoutes = [
   "/api/admin/",
@@ -61,12 +65,30 @@ export default defineEventHandler(async (event) => {
       });
     }
 
-    // Проверяем существование пользователя в базе данных
-    const dbUser = await db
-      .select()
-      .from(users)
-      .where(eq(users.id, user.id))
-      .limit(1);
+    // Проверяем наличие пользователя в кэше
+    const cacheKey = `user_${user.id}`;
+    let dbUser;
+    const cachedUser = userCache.get(cacheKey);
+    
+    if (cachedUser && (Date.now() - cachedUser.timestamp) < USER_CACHE_TTL) {
+      // Используем кэшированные данные
+      dbUser = cachedUser.data;
+    } else {
+      // Если нет в кэше или кэш устарел, запрашиваем из БД
+      dbUser = await db
+        .select()
+        .from(users)
+        .where(eq(users.id, user.id))
+        .limit(1);
+        
+      // Сохраняем в кэш с временной меткой
+      if (dbUser && dbUser.length > 0) {
+        userCache.set(cacheKey, { 
+          data: dbUser, 
+          timestamp: Date.now() 
+        });
+      }
+    }
 
     if (!dbUser || dbUser.length === 0) {
       throw createError({

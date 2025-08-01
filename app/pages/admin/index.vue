@@ -46,9 +46,7 @@
         </div>
       </div>
     </section>
-    <NuxtLink to="/admin/apitd" class="text-blue-500 hover:underline mb-4"
-      >LINK LINK LINK</NuxtLink
-    >
+
   </div>
 </template>
 

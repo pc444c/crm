@@ -50,11 +50,49 @@ export const useAuthStore = defineStore("auth", {
       this.clear();
     },
 
+    // Кэшируем последний запрос проверки аутентификации
+    _authCheckPromise: null as Promise<boolean> | null,
+    _lastAuthCheck: 0,
+
     async checkAuth() {
+      const now = Date.now();
+      
+      // Если у нас уже есть токен и роль, и проверка была недавно (в течение 30 секунд),
+      // возвращаем кэшированный результат без запроса на сервер
+      if (
+        this.isAuthenticated && 
+        this.token && 
+        now - this._lastAuthCheck < 30000 && 
+        !this.errorCode
+      ) {
+        return true;
+      }
+      
+      // Если уже идет запрос на проверку, возвращаем его результат
+      if (this._authCheckPromise) {
+        return this._authCheckPromise;
+      }
+      
+      // Создаем новый запрос на проверку
+      this._lastAuthCheck = now;
+      this._authCheckPromise = this._doCheckAuth();
+      
+      try {
+        return await this._authCheckPromise;
+      } finally {
+        this._authCheckPromise = null;
+      }
+    },
+    
+    async _doCheckAuth() {
       // Проверяем аутентификацию на сервере
       try {
         const response: any = await $fetch("/api/verify-auth", {
           method: "GET",
+          // Добавляем кэширование на уровне браузера
+          headers: {
+            "Cache-Control": "max-age=30",
+          }
         });
 
         if (response && response.status === "success") {

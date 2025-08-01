@@ -59,35 +59,7 @@ const navigationItems = computed(() => {
         icon: "i-heroicons-chart-bar",
       }
     );
-  } else if (auth.getRole === "admin") {
-    items.push(
-      {
-        label: "Главная",
-        to: "/admin",
-        icon: "i-heroicons-home",
-      },
-      {
-        label: "Базы данных",
-        to: "/admin/listdatabases",
-        icon: "i-heroicons-database",
-      },
-      {
-        label: "Пользователи",
-        to: "/admin/users",
-        icon: "i-heroicons-users",
-      },
-      {
-        label: "Записи",
-        to: "/admin/records",
-        icon: "i-heroicons-document-text",
-      },
-      {
-        label: "Теги",
-        to: "/admin/set_tags",
-        icon: "i-heroicons-tag",
-      }
-    );
-  }
+  } 
 
   return items;
 });
