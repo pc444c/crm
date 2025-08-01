@@ -59,13 +59,15 @@ export default defineEventHandler(async (event) => {
         excludeTags.push(additionalExcludeTag);
       }
     }
-    
+
     // Формируем условие исключения тегов
-    const excludeTagsCondition = excludeTags.map(tag => `'${tag}'`).join(', ');
+    const excludeTagsCondition = excludeTags
+      .map((tag) => `'${tag}'`)
+      .join(", ");
     whereClause += ` AND (records.tag NOT IN (${excludeTagsCondition}) AND records.tag IS NOT NULL)`;
-    
+
     // Логируем исключаемые теги
-    console.log(`[getCallStats] Исключаемые теги: ${excludeTags.join(', ')}`);
+    console.log(`[getCallStats] Исключаемые теги: ${excludeTags.join(", ")}`);
 
     // Добавляем фильтрацию по дате постановки тега, если указаны даты
     if (startDate && endDate) {

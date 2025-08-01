@@ -133,7 +133,10 @@
             />
             <template #fallback>
               <div class="flex items-center justify-center h-full">
-                <UIcon name="i-heroicons-arrow-path" class="animate-spin text-4xl text-primary" />
+                <UIcon
+                  name="i-heroicons-arrow-path"
+                  class="animate-spin text-4xl text-primary"
+                />
               </div>
             </template>
           </ClientOnly>
@@ -163,7 +166,10 @@
             />
             <template #fallback>
               <div class="flex items-center justify-center h-full">
-                <UIcon name="i-heroicons-arrow-path" class="animate-spin text-4xl text-primary" />
+                <UIcon
+                  name="i-heroicons-arrow-path"
+                  class="animate-spin text-4xl text-primary"
+                />
               </div>
             </template>
           </ClientOnly>
@@ -420,7 +426,10 @@ const statisticsData = ref<{
 const tagStats = computed(() => {
   const stats = statisticsData.value.callStats || [];
   return stats.filter(
-    (stat) => stat.status !== "no user" && stat.status !== "no used" && stat.status !== "used"
+    (stat) =>
+      stat.status !== "no user" &&
+      stat.status !== "no used" &&
+      stat.status !== "used"
   );
 });
 const timeSeriesData = computed(
@@ -429,7 +438,8 @@ const timeSeriesData = computed(
 const userCalls = computed(() => {
   const calls = statisticsData.value.userCalls || [];
   return calls.filter(
-    (call) => call.tag !== "no user" && call.tag !== "no used" && call.tag !== "used"
+    (call) =>
+      call.tag !== "no user" && call.tag !== "no used" && call.tag !== "used"
   );
 });
 const availableTags = computed(() => statisticsData.value.tags || []);
@@ -522,9 +532,10 @@ const averagePerDay = computed(() => {
 // Опции для круговой диаграммы (статистика по тегам)
 const pieChartOption = computed(() => {
   // Безопасная проверка для SSR
-  const isDark = typeof document !== 'undefined' 
-    ? document?.documentElement?.classList?.contains("dark") ?? false
-    : false;
+  const isDark =
+    typeof document !== "undefined"
+      ? document?.documentElement?.classList?.contains("dark") ?? false
+      : false;
 
   const data = tagStats.value.map((stat) => ({
     name: getTagName(stat.status),
@@ -591,9 +602,10 @@ const pieChartOption = computed(() => {
 // Опции для линейной диаграммы (динамика по дням)
 const lineChartOption = computed(() => {
   // Безопасная проверка для SSR
-  const isDark = typeof document !== 'undefined' 
-    ? document?.documentElement?.classList?.contains("dark") ?? false
-    : false;
+  const isDark =
+    typeof document !== "undefined"
+      ? document?.documentElement?.classList?.contains("dark") ?? false
+      : false;
 
   const dates = timeSeriesData.value.map((item) => {
     const date = new Date(item.date);

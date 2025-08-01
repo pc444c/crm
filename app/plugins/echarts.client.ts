@@ -1,6 +1,6 @@
 export default defineNuxtPlugin(async () => {
   // Только на клиенте
-  if (typeof window !== 'undefined' && import.meta.client) {
+  if (typeof window !== "undefined" && import.meta.client) {
     try {
       const { use } = await import("echarts/core");
       const { CanvasRenderer } = await import("echarts/renderers");
@@ -25,7 +25,7 @@ export default defineNuxtPlugin(async () => {
         CanvasRenderer,
       ]);
     } catch (error) {
-      console.warn('ECharts initialization failed:', error);
+      console.warn("ECharts initialization failed:", error);
     }
   }
 });

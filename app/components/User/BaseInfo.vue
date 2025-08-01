@@ -39,6 +39,16 @@
                 {{ tag.name }}
               </button>
             </UTooltip>
+
+            <!-- Кнопка Перезвон -->
+            <UButton
+              color="warning"
+              icon="i-heroicons-phone"
+              :disabled="isUpdatingTag || !currentRecord"
+              @click="showCallbackModal = true"
+            >
+              Перезвон
+            </UButton>
           </div>
 
           <!-- Разделитель -->
@@ -100,7 +110,7 @@
           />
 
           <div class="flex justify-end gap-2 mt-4">
-            <UButton size="sm" color="gray" @click="cancelEditComment"
+            <UButton size="sm" color="neutral" @click="cancelEditComment"
               >Отмена</UButton
             >
             <UButton
@@ -116,23 +126,124 @@
       </template>
     </UCard>
   </div>
+
+  <!-- Модальное окно для перезвона -->
+  <UModal v-model:open="showCallbackModal" title="Назначить перезвон">
+    <template #body>
+      <div class="p-4">
+        <div class="flex flex-col gap-4">
+          <div class="text-lg font-medium">
+            Назначить перезвон для: {{ currentRecord?.fio || "Не указано" }}
+          </div>
+
+          <div class="text-sm text-gray-600">
+            Телефон: {{ currentRecord?.phone || "Не указан" }}
+          </div>
+
+          <UFormField label="Дата и время перезвона">
+            <UInput
+              v-model="callbackDateTime"
+              type="datetime-local"
+              :min="minDateTime"
+              icon="i-heroicons-calendar"
+            />
+          </UFormField>
+
+          <UFormField label="Комментарий (необязательно)">
+            <UTextarea
+              v-model="callbackComment"
+              placeholder="Дополнительная информация для перезвона..."
+              :rows="3"
+            />
+          </UFormField>
+        </div>
+
+        <div class="flex justify-end gap-3 mt-6">
+          <UButton color="neutral" @click="showCallbackModal = false">
+            Отмена
+          </UButton>
+          <UButton
+            color="warning"
+            icon="i-heroicons-phone"
+            :loading="isSettingCallback"
+            :disabled="!callbackDateTime"
+            @click="setCallback"
+          >
+            Назначить перезвон
+          </UButton>
+        </div>
+      </div>
+    </template>
+  </UModal>
 </template>
 
-<script setup>
-import { ref, onMounted } from "vue";
+<script setup lang="ts">
+import { ref, onMounted, onUnmounted } from "vue";
 import { useAuthStore } from "~/store/useAuth";
 
 const auth = useAuthStore();
 const toast = useToast();
 
+interface Tag {
+  id: number;
+  name: string;
+  about?: string;
+  color: string;
+}
+
+interface ApiResponse {
+  success: boolean;
+  record?: Record;
+  error?: string;
+}
+
+interface Record {
+  id: number;
+  fio?: string;
+  phone?: string;
+  city?: string;
+  region?: string;
+  address?: string;
+  age?: string;
+  custom1?: string;
+  custom2?: string;
+  custom3?: string;
+  description?: string;
+  tag?: string;
+  tagInfo?: {
+    id: number;
+    name: string;
+    color: string;
+  };
+  callback_time?: string;
+  [key: string]: unknown;
+}
+
 // Состояния
 const isLoading = ref(false);
 const isUpdatingTag = ref(false);
-const currentRecord = ref(null);
-const listtag = ref([]);
+const currentRecord = ref<Record | null>(null);
+const listtag = ref<Tag[]>([]);
 const editingComment = ref(false);
 const commentText = ref("");
 const isSavingComment = ref(false);
+const showCallbackModal = ref(false);
+const isSettingCallback = ref(false);
+const callbackDateTime = ref("");
+const callbackComment = ref("");
+const noMoreRecords = ref(false);
+const recordEndMessage = ref("");
+const isEditingComment = ref(false);
+
+// Ссылка на обработчик события для правильной очистки
+const loadRecordHandler = ref<((event: Event) => void) | null>(null);
+
+// Минимальное время для перезвона (текущее время + 5 минут)
+const minDateTime = computed(() => {
+  const now = new Date();
+  now.setMinutes(now.getMinutes() + 5);
+  return now.toISOString().slice(0, 16);
+});
 
 // Поля для отображения
 const displayFields = [
@@ -148,7 +259,7 @@ const displayFields = [
 ];
 
 // Получить значение поля
-const getFieldValue = (key) => {
+const getFieldValue = (key: string) => {
   return currentRecord.value ? currentRecord.value[key] : "";
 };
 
@@ -160,36 +271,26 @@ const getTags = async () => {
   if (!auth.isAuthenticated) return;
 
   try {
-    // Сначала пробуем загрузить через API для пользователей
-    let response = await $fetch("/api/tags/list").catch((error) => {
-      // Если ошибка связана с отсутствием пользователя в базе
-      if (error.data && error.data.code === "USER_NOT_EXISTS") {
-        auth.setErrorCode("USER_NOT_EXISTS");
-        navigateTo("/?error=USER_NOT_EXISTS");
-        return null;
-      }
-      return null;
-    });
+    const response = (await $fetch("/api/tags/list")) as unknown;
 
-    // Если не получилось, пробуем через админское API (для обратной совместимости)
-    if (!response) {
-      response = await $fetch("/api/admin/listtags").catch(() => null);
-    }
-
-    if (response && !response.code) {
-      console.log("Загружены теги:", response);
-      listtag.value = response;
-    } else if (response && response.code === "USER_NOT_EXISTS") {
-      auth.setErrorCode("USER_NOT_EXISTS");
-      navigateTo("/?error=USER_NOT_EXISTS");
+    if (response && Array.isArray(response)) {
+      listtag.value = (response as unknown[]).map((tag: unknown) => {
+        const tagData = tag as Record<string, unknown>;
+        return {
+          id: tagData.id as number,
+          name: tagData.name as string,
+          about: (tagData.about as string) || "",
+          color: tagData.color as string,
+        };
+      });
     } else {
       throw new Error("Не удалось загрузить теги");
     }
-  } catch (error) {
+  } catch (error: unknown) {
     console.error("Ошибка при загрузке тегов:", error);
 
-    // Проверка на ошибку USER_NOT_EXISTS
-    if (error.data && error.data.code === "USER_NOT_EXISTS") {
+    const errorData = error as { data?: { code?: string } };
+    if (errorData.data && errorData.data.code === "USER_NOT_EXISTS") {
       auth.setErrorCode("USER_NOT_EXISTS");
       navigateTo("/?error=USER_NOT_EXISTS");
       return;
@@ -214,14 +315,14 @@ const fetchRecord = async () => {
   console.log("Запрашиваем запись для пользователя ID:", auth.getId);
 
   try {
-    const response = await $fetch("/api/user/getContant", {
+    const response = (await $fetch("/api/user/getContant", {
       method: "POST",
       body: {
         userId: auth.getId,
       },
-    });
+    })) as ApiResponse;
 
-    if (response && response.success && response.record) {
+    if (response.success && "record" in response && response.record) {
       currentRecord.value = response.record;
       commentText.value = response.record.description || "";
 
@@ -234,7 +335,9 @@ const fetchRecord = async () => {
       toast.add({
         title: "Информация",
         description:
-          response && response.error ? response.error : "БАЗА ЗАКОНЧИЛАСЬ",
+          response && "error" in response && response.error
+            ? response.error
+            : "БАЗА ЗАКОНЧИЛАСЬ",
         color: "warning",
       });
       currentRecord.value = null;
@@ -264,8 +367,55 @@ const fetchRecord = async () => {
   }
 };
 
+// Загрузить конкретную запись по ID
+const loadSpecificRecord = async (recordId: number) => {
+  try {
+    isLoading.value = true;
+    console.log("Загружаем запись с ID:", recordId);
+
+    const response = (await $fetch(`/api/user/getRecordById`, {
+      query: { id: recordId },
+    })) as { status: string; record?: Record; message?: string };
+
+    console.log("Ответ от API:", response);
+
+    if (response.status === "success" && response.record) {
+      currentRecord.value = response.record;
+      commentText.value = response.record.description || "";
+      isEditingComment.value = false;
+
+      toast.add({
+        title: "Успешно",
+        description: "Запись загружена из перезвонов",
+        color: "success",
+      });
+    } else {
+      noMoreRecords.value = true;
+      recordEndMessage.value = response.message || "Запись не найдена";
+
+      toast.add({
+        title: "Ошибка",
+        description: response.message || "Запись не найдена",
+        color: "error",
+      });
+    }
+  } catch (error) {
+    console.error("Ошибка загрузки записи:", error);
+    recordEndMessage.value = "Ошибка загрузки записи";
+    noMoreRecords.value = true;
+
+    toast.add({
+      title: "Ошибка",
+      description: "Не удалось загрузить запись",
+      color: "error",
+    });
+  } finally {
+    isLoading.value = false;
+  }
+};
+
 // Выбор и назначение тега сразу без подтверждения
-const selectTag = async (tag) => {
+const selectTag = async (tag: Tag) => {
   // Проверяем актуальность аутентификации перед каждым запросом
   await auth.checkAuth();
 
@@ -327,6 +477,84 @@ const selectTag = async (tag) => {
     });
   } finally {
     isUpdatingTag.value = false;
+  }
+};
+
+// Назначение перезвона
+const setCallback = async () => {
+  if (!currentRecord.value || !callbackDateTime.value) return;
+
+  await auth.checkAuth();
+  if (!auth.isAuthenticated) return;
+
+  isSettingCallback.value = true;
+
+  try {
+    // Ищем тег "ПЕРЕЗВОН"
+    const callbackTag = listtag.value.find((tag) => tag.name === "ПЕРЕЗВОН");
+
+    if (!callbackTag) {
+      throw new Error("Тег 'ПЕРЕЗВОН' не найден");
+    }
+
+    // Назначаем тег и устанавливаем время перезвона
+    const response = await $fetch("/api/records/setCallback", {
+      method: "POST",
+      body: {
+        recordId: currentRecord.value.id,
+        tagId: callbackTag.id,
+        callbackTime: callbackDateTime.value,
+        comment: callbackComment.value || null,
+      },
+    });
+
+    if (response && response.status === "success") {
+      // Обновляем текущую запись
+      currentRecord.value.tag = "ПЕРЕЗВОН";
+      currentRecord.value.callback_time = callbackDateTime.value;
+      if (callbackComment.value) {
+        currentRecord.value.description = callbackComment.value;
+      }
+
+      toast.add({
+        title: "Успешно",
+        description: "Перезвон назначен",
+        color: "success",
+      });
+
+      // Закрываем модальное окно и сбрасываем форму
+      showCallbackModal.value = false;
+      callbackDateTime.value = "";
+      callbackComment.value = "";
+
+      // Обновляем список звонков
+      window.dispatchEvent(new CustomEvent("call-list-updated"));
+
+      // Загружаем следующую запись
+      await fetchRecord();
+    } else {
+      throw new Error(response?.message || "Не удалось назначить перезвон");
+    }
+  } catch (error) {
+    console.error("Ошибка при назначении перезвона:", error);
+
+    if (
+      error.data &&
+      (error.data.code === "USER_NOT_EXISTS" ||
+        error.data.data?.errorCode === "USER_NOT_EXISTS")
+    ) {
+      auth.setErrorCode("USER_NOT_EXISTS");
+      navigateTo("/?error=USER_NOT_EXISTS");
+      return;
+    }
+
+    toast.add({
+      title: "Ошибка",
+      description: error.message || "Не удалось назначить перезвон",
+      color: "error",
+    });
+  } finally {
+    isSettingCallback.value = false;
   }
 };
 
@@ -402,6 +630,27 @@ onMounted(async () => {
     getTags();
     // Автоматически загружаем запись при монтировании
     fetchRecord();
+  }
+
+  // Обработчик для загрузки конкретной записи
+  const handleLoadRecord = (event: Event) => {
+    const customEvent = event as CustomEvent;
+    const recordId = customEvent.detail?.recordId;
+    console.log("Получено событие loadRecord с recordId:", recordId);
+    if (recordId) {
+      loadSpecificRecord(recordId);
+    }
+  };
+
+  window.addEventListener("loadRecord", handleLoadRecord);
+  loadRecordHandler.value = handleLoadRecord;
+});
+
+onUnmounted(() => {
+  // Правильно очищаем обработчик события
+  if (loadRecordHandler.value) {
+    window.removeEventListener("loadRecord", loadRecordHandler.value);
+    loadRecordHandler.value = null;
   }
 });
 </script>

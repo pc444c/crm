@@ -98,18 +98,32 @@
       <UIcon name="i-heroicons-arrow-path" class="animate-spin text-2xl" />
     </div>
 
-    <!-- Пагинация в стиле user страницы -->
+    <!-- Пагинация -->
     <div
-      v-if="filteredItems.length > pageSize"
-      class="flex justify-between items-center bg-gray-50 dark:bg-gray-800 px-4 py-3 rounded-b-md border-t border-gray-200 dark:border-gray-700"
+      v-if="totalPages > 1"
+      class="flex flex-col sm:flex-row justify-between items-center bg-gray-50 dark:bg-gray-800 px-4 py-3 rounded-b-md border-t border-gray-200 dark:border-gray-700 gap-3"
     >
+      <!-- Информация о записях -->
       <div class="text-sm text-gray-500 dark:text-gray-400">
         Показано:
         {{ currentPage === 1 ? 1 : (currentPage - 1) * pageSize + 1 }} -
         {{ Math.min(currentPage * pageSize, filteredItems.length) }} из
-        {{ filteredItems.length }}
+        {{ filteredItems.length }} записей
       </div>
-      <div class="flex gap-2">
+
+      <!-- Кнопки пагинации -->
+      <div class="flex items-center gap-1">
+        <!-- Первая страница -->
+        <UButton
+          size="sm"
+          color="primary"
+          variant="ghost"
+          icon="i-heroicons-chevron-double-left"
+          :disabled="currentPage === 1"
+          @click="goToPage(1)"
+        />
+
+        <!-- Предыдущая страница -->
         <UButton
           size="sm"
           color="primary"
@@ -117,12 +131,31 @@
           icon="i-heroicons-chevron-left"
           :disabled="currentPage === 1"
           @click="prevPage"
-        >
-          Пред
-        </UButton>
-        <span class="px-3 py-2 text-sm text-gray-500 dark:text-gray-400">
-          {{ currentPage }} / {{ totalPages }}
-        </span>
+        />
+
+        <!-- Номера страниц -->
+        <div class="flex gap-1">
+          <template v-for="page in visiblePages" :key="page">
+            <UButton
+              v-if="page !== '...'"
+              size="sm"
+              :color="currentPage === page ? 'primary' : 'neutral'"
+              :variant="currentPage === page ? 'solid' : 'ghost'"
+              class="min-w-[36px]"
+              @click="goToPage(page as number)"
+            >
+              {{ page }}
+            </UButton>
+            <span
+              v-else
+              class="px-3 py-2 text-sm text-gray-500 dark:text-gray-400"
+            >
+              ...
+            </span>
+          </template>
+        </div>
+
+        <!-- Следующая страница -->
         <UButton
           size="sm"
           color="primary"
@@ -130,9 +163,28 @@
           icon="i-heroicons-chevron-right"
           :disabled="currentPage >= totalPages"
           @click="nextPage"
-        >
-          След
-        </UButton>
+        />
+
+        <!-- Последняя страница -->
+        <UButton
+          size="sm"
+          color="primary"
+          variant="ghost"
+          icon="i-heroicons-chevron-double-right"
+          :disabled="currentPage >= totalPages"
+          @click="goToPage(totalPages)"
+        />
+      </div>
+
+      <!-- Размер страницы -->
+      <div class="flex items-center gap-2 text-sm">
+        <span class="text-gray-500 dark:text-gray-400">Показать:</span>
+        <USelect
+          v-model="selectedPageSize"
+          :options="pageSizeOptions"
+          size="sm"
+          class="w-20"
+        />
       </div>
     </div>
   </UCard>
@@ -181,6 +233,15 @@ const searchQuery = ref("");
 const currentPage = ref(1);
 const sortBy = ref<string>("");
 const sortOrder = ref<"asc" | "desc">("desc");
+const selectedPageSize = ref(props.pageSize);
+
+// Опции размера страницы
+const pageSizeOptions = [
+  { label: "10", value: 10 },
+  { label: "20", value: 20 },
+  { label: "50", value: 50 },
+  { label: "100", value: 100 },
+];
 
 // Вычисляемые свойства
 const totalItems = computed(() => props.items.length);
@@ -220,14 +281,56 @@ const filteredItems = computed(() => {
 });
 
 const paginatedItems = computed(() => {
-  const start = (currentPage.value - 1) * props.pageSize;
-  const end = start + props.pageSize;
+  const start = (currentPage.value - 1) * selectedPageSize.value;
+  const end = start + selectedPageSize.value;
   return filteredItems.value.slice(start, end);
 });
 
 const totalPages = computed(() =>
-  Math.ceil(filteredItems.value.length / props.pageSize)
+  Math.ceil(filteredItems.value.length / selectedPageSize.value)
 );
+
+// Видимые номера страниц для пагинации
+const visiblePages = computed(() => {
+  const current = currentPage.value;
+  const total = totalPages.value;
+  const delta = 2; // Количество страниц с каждой стороны от текущей
+
+  const pages: (number | string)[] = [];
+
+  if (total <= 7) {
+    // Если страниц мало, показываем все
+    for (let i = 1; i <= total; i++) {
+      pages.push(i);
+    }
+  } else {
+    // Всегда показываем первую страницу
+    pages.push(1);
+
+    if (current > delta + 2) {
+      pages.push("...");
+    }
+
+    // Страницы вокруг текущей
+    const start = Math.max(2, current - delta);
+    const end = Math.min(total - 1, current + delta);
+
+    for (let i = start; i <= end; i++) {
+      pages.push(i);
+    }
+
+    if (current < total - delta - 1) {
+      pages.push("...");
+    }
+
+    // Всегда показываем последнюю страницу
+    if (total > 1) {
+      pages.push(total);
+    }
+  }
+
+  return pages;
+});
 
 // Методы
 function getNestedValue(obj: Record<string, unknown>, path: string): unknown {
@@ -276,8 +379,20 @@ function prevPage() {
   }
 }
 
+function goToPage(page: number) {
+  if (page >= 1 && page <= totalPages.value) {
+    currentPage.value = page;
+    emit("pageChange", currentPage.value);
+  }
+}
+
 // Сброс пагинации при поиске
 watch(searchQuery, () => {
+  currentPage.value = 1;
+});
+
+// Сброс пагинации при изменении размера страницы
+watch(selectedPageSize, () => {
   currentPage.value = 1;
 });
 </script>

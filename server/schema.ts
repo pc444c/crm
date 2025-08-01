@@ -50,6 +50,8 @@ export const records = pgTable("records", {
   }),
   // поле даты в какое время запись была использована
   used_at: timestamp("used_at", { precision: 3 }),
+  // поле для времени перезвона
+  callback_time: timestamp("callback_time", { precision: 3 }),
   // поле для хранения статуса
 });
 // tags.ts
@@ -59,4 +61,16 @@ export const tags = pgTable("tags", {
   about: varchar("about", { length: 255 }),
   color: varchar("color", { length: 20 }).notNull(), // Цвет тега
   created_at: timestamp("created_at", { precision: 3 }).defaultNow().notNull(),
+});
+
+// user_scripts.ts - Таблица для пользовательских скриптов
+export const userScripts = pgTable("user_scripts", {
+  id: serial("id").primaryKey(),
+  user_id: integer("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  name: varchar("name", { length: 255 }).notNull(), // Название скрипта
+  content: varchar("content", { length: 10000 }).notNull(), // HTML содержимое скрипта
+  created_at: timestamp("created_at", { precision: 3 }).defaultNow().notNull(),
+  updated_at: timestamp("updated_at", { precision: 3 }).defaultNow().notNull(),
 });

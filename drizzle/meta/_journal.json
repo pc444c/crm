@@ -8,6 +8,20 @@
       "when": 1754026288068,
       "tag": "0000_striped_wrecker",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1754054745606,
+      "tag": "0001_quick_blockbuster",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1754057480055,
+      "tag": "0002_furry_rawhide_kid",
+      "breakpoints": true
     }
   ]
 }

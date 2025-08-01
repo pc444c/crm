@@ -8,15 +8,38 @@
         <user-text-script class="h-full" />
       </div>
     </div>
+
+    <!-- Список перезвонов внизу -->
+    <div class="w-full">
+      <user-callback-list @select-callback="loadCallbackRecord" />
+    </div>
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
 // Импорт всех необходимых компонентов осуществляется автоматически
 // благодаря конвенции именования в Nuxt 3
 useHead({
   title: "Панель оператора",
 });
+
+interface CallbackRecord {
+  id: number;
+  fio: string;
+  phone: string;
+  callback_time: string;
+  description?: string;
+}
+
+// Функция для загрузки записи из перезвона
+function loadCallbackRecord(callbackRecord: CallbackRecord) {
+  // Отправляем событие для загрузки записи в BaseInfo компонент
+  window.dispatchEvent(
+    new CustomEvent("loadRecord", {
+      detail: { recordId: callbackRecord.id },
+    })
+  );
+}
 </script>
 
 <style scoped>
