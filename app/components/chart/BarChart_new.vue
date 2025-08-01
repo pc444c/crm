@@ -14,7 +14,7 @@ interface ChartItem {
   tag_name?: string;
   count?: number;
   color?: string;
-  [key: string]: unknown;
+  [key: string]: any;
 }
 
 interface YAxisConfig {

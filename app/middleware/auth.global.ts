@@ -23,15 +23,19 @@ export default defineNuxtRouteMiddleware(async (to) => {
     // Оптимизация: проверяем токен только если прошло больше 30 секунд с последней проверки
     // или если пользователь не аутентифицирован
     const now = Date.now();
-    if (!auth.isAuthenticated || now - lastAuthCheck > 30000 || !authCheckPromise) {
+    if (
+      !auth.isAuthenticated ||
+      now - lastAuthCheck > 30000 ||
+      !authCheckPromise
+    ) {
       authCheckPromise = auth.checkAuth();
       lastAuthCheck = now;
     }
-    
+
     // Ждем результата проверки
     await authCheckPromise;
 
-    if (import.meta.client && process.env.NODE_ENV !== 'production') {
+    if (import.meta.client && process.env.NODE_ENV !== "production") {
       console.debug(
         `[Auth Middleware] Доступ к ${to.path}, роль: ${auth.getRole}, аутентифицирован: ${auth.isAuthenticated}`
       );

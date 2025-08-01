@@ -8,7 +8,7 @@
         height="50"
         class="rounded-full"
       />
-      <h2 class="font-bold font-mono text-xl">CRM SYSTEM</h2>
+      <h2 class="font-bold font-mono text-xl">CRM</h2>
     </div>
     <div>
       <UNavigationMenu color="primary" :items="items" class="w-full" />

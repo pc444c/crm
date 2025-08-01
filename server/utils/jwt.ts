@@ -17,7 +17,10 @@ const SECRET_KEY = "your-secret-key-should-be-stored-in-env-file";
 const TOKEN_EXPIRATION = "24h";
 
 // Кэш для верификации токенов
-const tokenVerifyCache = new Map<string, { payload: TokenPayload; timestamp: number }>();
+const tokenVerifyCache = new Map<
+  string,
+  { payload: TokenPayload; timestamp: number }
+>();
 const TOKEN_CACHE_TTL = 60000; // 1 минута
 
 /**
@@ -37,16 +40,16 @@ export function createToken(payload: TokenPayload): string {
 export function verifyToken(token: string): TokenPayload | null {
   // Проверяем кэш
   const cachedResult = tokenVerifyCache.get(token);
-  if (cachedResult && (Date.now() - cachedResult.timestamp) < TOKEN_CACHE_TTL) {
+  if (cachedResult && Date.now() - cachedResult.timestamp < TOKEN_CACHE_TTL) {
     return cachedResult.payload;
   }
-  
+
   try {
     // Проверяем токен и кэшируем результат
     const payload = jwt.verify(token, SECRET_KEY) as TokenPayload;
-    tokenVerifyCache.set(token, { 
-      payload, 
-      timestamp: Date.now() 
+    tokenVerifyCache.set(token, {
+      payload,
+      timestamp: Date.now(),
     });
     return payload;
   } catch (_error) {

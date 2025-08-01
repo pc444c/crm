@@ -1,5 +1,7 @@
 <template>
-  <div class="bg-neutral-800 rounded-lg p-4 shadow-lg border border-neutral-700">
+  <div
+    class="bg-neutral-800 rounded-lg p-4 shadow-lg border border-neutral-700"
+  >
     <h2 class="text-lg font-semibold mb-4 text-primary-400">{{ title }}</h2>
     <div
       v-if="loading"

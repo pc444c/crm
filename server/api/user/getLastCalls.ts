@@ -5,7 +5,7 @@ import { defineEventHandler, readBody } from "h3";
 
 export default defineEventHandler(async (event) => {
   try {
-    // РџРѕР»СѓС‡Р°РµРј РїР°СЂР°РјРµС‚СЂС‹ РёР· С‚РµР»Р° Р·Р°РїСЂРѕСЃР°
+    // Получаем параметры из тела запроса
     const body = await readBody(event);
     const {
       userId,

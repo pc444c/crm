@@ -19,16 +19,42 @@ export default defineEventHandler(async (event) => {
 
     // Получаем параметры фильтрации
     const query = getQuery(event);
-    const startDate = query.startDate
-      ? new Date(query.startDate.toString())
-      : null;
-    const endDate = query.endDate ? new Date(query.endDate.toString()) : null;
+
+    // Логируем исходные параметры
+    console.log(
+      `[getCallStats] Исходные параметры запроса: startDate=${query.startDate}, endDate=${query.endDate}, excludeTag=${query.excludeTag}`
+    );
+
+    // Преобразуем даты и управляем временем
+    let startDate = null;
+    let endDate = null;
+
+    if (query.startDate) {
+      startDate = new Date(query.startDate.toString());
+      startDate.setHours(0, 0, 0, 0); // Начало дня
+    }
+
+    if (query.endDate) {
+      endDate = new Date(query.endDate.toString());
+      endDate.setHours(23, 59, 59, 999); // Конец дня
+    }
+
+    // Логируем преобразованные даты
+    console.log(
+      `[getCallStats] Преобразованные даты: startDate=${startDate?.toISOString()}, endDate=${endDate?.toISOString()}`
+    );
 
     // Получаем все доступные теги из базы данных с их цветами для оформления
     const allTags = await db.select().from(tags);
 
     // Базовые условия запроса - звонки, обработанные текущим пользователем
     let whereClause = `records.user_id = ${userData.id}`;
+
+    // Исключаем записи с определенным тегом, если указан параметр excludeTag
+    if (query.excludeTag) {
+      const excludeTag = query.excludeTag.toString();
+      whereClause += ` AND (records.tag != '${excludeTag}' AND records.tag != 'no used' AND records.tag IS NOT NULL)`;
+    }
 
     // Добавляем фильтрацию по дате постановки тега, если указаны даты
     if (startDate && endDate) {
@@ -39,13 +65,16 @@ export default defineEventHandler(async (event) => {
       whereClause += ` AND records.status_updated_at <= '${endDate.toISOString()}'`;
     }
 
+    // Выводим полный SQL запрос для отладки
+    console.log(`[getCallStats] WHERE условие: ${whereClause}`);
+
     // SQL-запрос для получения статистики звонков по тегам
     const tagsStatsQuery = `
       SELECT 
         tag as status, 
         COUNT(*) as count 
       FROM records 
-      WHERE ${whereClause} AND status_updated_at IS NOT NULL
+      WHERE ${whereClause}
       GROUP BY tag 
       ORDER BY tag
     `;
@@ -75,13 +104,31 @@ export default defineEventHandler(async (event) => {
       FROM records 
       WHERE ${whereClause}
       ORDER BY status_updated_at DESC
-      LIMIT 100
+      LIMIT 1000
     `;
 
     // Выполняем запросы
     const callStats = await db.execute(sql.raw(tagsStatsQuery));
     const timeSeriesData = await db.execute(sql.raw(timeSeriesQuery));
     const userCalls = await db.execute(sql.raw(userCallsQuery));
+
+    // Логируем количество полученных данных для диагностики
+    console.log(
+      `[getCallStats] Получено статистик по тегам: ${callStats.rows.length}`
+    );
+    console.log(
+      `[getCallStats] Получено данных по дням: ${timeSeriesData.rows.length}`
+    );
+    console.log(
+      `[getCallStats] Получено записей звонков: ${userCalls.rows.length}`
+    );
+
+    // Проверяем наличие данных
+    if (!callStats.rows.length && !timeSeriesData.rows.length) {
+      console.warn(
+        `[getCallStats] Нет данных для пользователя ${userData.id} с фильтрами: startDate=${startDate}, endDate=${endDate}`
+      );
+    }
 
     return {
       status: "success",

@@ -63,6 +63,18 @@ export function getCurrentDate(): string {
  * @param dateField Название поля с датой в объектах (по умолчанию 'status_updated_at')
  * @returns Отфильтрованный массив объектов
  */
+/**
+ * Форматирует дату для использования в input[type="date"]
+ * @param date Объект Date для форматирования
+ * @returns Строка даты в формате YYYY-MM-DD
+ */
+export function formatDateForInput(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
 export function filterByDateRange<T extends Record<string, unknown>>(
   items: T[],
   startDate: string | null | undefined,

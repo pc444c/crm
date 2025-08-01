@@ -69,8 +69,8 @@ export default defineEventHandler(async (event) => {
     const cacheKey = `user_${user.id}`;
     let dbUser;
     const cachedUser = userCache.get(cacheKey);
-    
-    if (cachedUser && (Date.now() - cachedUser.timestamp) < USER_CACHE_TTL) {
+
+    if (cachedUser && Date.now() - cachedUser.timestamp < USER_CACHE_TTL) {
       // Используем кэшированные данные
       dbUser = cachedUser.data;
     } else {
@@ -80,12 +80,12 @@ export default defineEventHandler(async (event) => {
         .from(users)
         .where(eq(users.id, user.id))
         .limit(1);
-        
+
       // Сохраняем в кэш с временной меткой
       if (dbUser && dbUser.length > 0) {
-        userCache.set(cacheKey, { 
-          data: dbUser, 
-          timestamp: Date.now() 
+        userCache.set(cacheKey, {
+          data: dbUser,
+          timestamp: Date.now(),
         });
       }
     }

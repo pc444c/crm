@@ -10,8 +10,8 @@ const USER_VERIFY_CACHE_TTL = 30000; // 30 секунд
 
 export default defineEventHandler(async (event) => {
   // Добавляем заголовки для кэширования ответа
-  setHeader(event, 'Cache-Control', 'public, max-age=30');
-  
+  setHeader(event, "Cache-Control", "public, max-age=30");
+
   // Получаем токен из куки
   const token = getCookie(event, "auth_token");
 
@@ -35,12 +35,15 @@ export default defineEventHandler(async (event) => {
   // Преобразуем ID в число, если это строка
   const userId =
     typeof userData.id === "string" ? parseInt(userData.id) : userData.id;
-    
+
   // Проверяем кэш для ускорения ответа
   const cacheKey = `verify_user_${userId}`;
   const cachedResult = userVerifyCache.get(cacheKey);
-  
-  if (cachedResult && (Date.now() - cachedResult.timestamp) < USER_VERIFY_CACHE_TTL) {
+
+  if (
+    cachedResult &&
+    Date.now() - cachedResult.timestamp < USER_VERIFY_CACHE_TTL
+  ) {
     // Возвращаем кэшированный результат
     return cachedResult.result;
   }
@@ -61,13 +64,13 @@ export default defineEventHandler(async (event) => {
         message: "Пользователь не существует в системе",
         code: "USER_NOT_EXISTS",
       };
-      
+
       // Кэшируем отрицательный результат
-      userVerifyCache.set(cacheKey, { 
-        result, 
-        timestamp: Date.now() 
+      userVerifyCache.set(cacheKey, {
+        result,
+        timestamp: Date.now(),
       });
-      
+
       return result;
     }
 
@@ -81,13 +84,13 @@ export default defineEventHandler(async (event) => {
         role: userData.role,
       },
     };
-    
+
     // Кэшируем положительный результат
-    userVerifyCache.set(cacheKey, { 
-      result, 
-      timestamp: Date.now() 
+    userVerifyCache.set(cacheKey, {
+      result,
+      timestamp: Date.now(),
     });
-    
+
     return result;
   } catch (error) {
     console.error("Ошибка при проверке пользователя в базе данных:", error);

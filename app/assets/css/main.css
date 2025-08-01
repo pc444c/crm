@@ -1,12 +1,15 @@
-@import url("https://fonts.googleapis.com/css2?family=Raleway:ital,wght@0,100..900;1,100..900&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap");
 
 @import "tailwindcss";
 @import "@nuxt/ui";
 body {
-  font-family: "Raleway", sans-serif;
+  font-family: "Inter", "Roboto", system-ui, -apple-system, BlinkMacSystemFont,
+    sans-serif;
   font-optical-sizing: auto;
-  font-weight: 500;
+  font-weight: 400;
   font-style: normal;
   min-height: 100vh;
-
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }

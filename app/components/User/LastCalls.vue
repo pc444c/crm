@@ -1,14 +1,10 @@
 <template>
-  <div class="flex flex-col gap-4 bg-neutral-800 rounded-lg p-4 shadow-lg border border-neutral-700">
+  <div
+    class="flex flex-col gap-4 bg-neutral-800 rounded-lg p-4 shadow-lg border border-neutral-700"
+  >
     <h2 class="text-lg font-semibold text-primary-400">История звонков</h2>
     <div
-      class="flex flex-col md:flex-r        // Получаем все доступные теги
-      if (response.tags && response.tags.length > 0) {
-        tags.value = response.tags;
-      }
-      
-      // Записываем звонки в state независимо от наличия тегов
-      calls.value = filteredCalls;ter justify-between gap-4"
+      class="flex flex-col md:flex-r // Получаем все доступные теги if (response.tags && response.tags.length > 0) { tags.value = response.tags; } // Записываем звонки в state независимо от наличия тегов calls.value = filteredCalls;ter justify-between gap-4"
     >
       <!-- Фильтры и сортировка -->
       <div class="flex flex-wrap items-center gap-3">
@@ -69,7 +65,9 @@
     <!-- Таблица со звонками -->
     <div v-else class="overflow-auto rounded-md shadow-md">
       <table class="min-w-full text-sm text-left text-gray-400">
-        <thead class="bg-neutral-900 text-gray-300 uppercase text-xs sticky top-0 z-10">
+        <thead
+          class="bg-neutral-900 text-gray-300 uppercase text-xs sticky top-0 z-10"
+        >
           <tr>
             <th class="px-4 py-3">Статус</th>
             <th class="px-4 py-3">ФИО</th>
@@ -110,9 +108,14 @@
       </table>
 
       <!-- Пагинация -->
-      <div class="flex justify-between items-center bg-neutral-900 px-4 py-3 rounded-b-md border-t border-neutral-700">
+      <div
+        class="flex justify-between items-center bg-neutral-900 px-4 py-3 rounded-b-md border-t border-neutral-700"
+      >
         <div class="text-sm text-gray-400">
-          Показано: {{ Math.min(limit, calls.length) }} из {{ totalRecords }}
+          Показано:
+          {{ currentPage === 1 ? 1 : (currentPage - 1) * limit + 1 }} -
+          {{ Math.min(currentPage * limit, totalRecords) }} из
+          {{ totalRecords }}
         </div>
         <div class="flex gap-2">
           <UButton
@@ -151,7 +154,7 @@ const toast = useToast();
 const isLoading = ref(false);
 const calls = ref([]);
 const tags = ref([]);
-const limit = ref(10);
+const limit = ref(50); // Увеличиваем лимит для отображения большего количества записей
 const currentPage = ref(1);
 const totalRecords = ref(0);
 const filterStatus = ref(null);
@@ -241,7 +244,9 @@ async function loadCalls() {
       const filteredCalls = (response.records || []).filter(
         (call) => call.tag !== "no used"
       );
-      totalRecords.value = filteredCalls.length; // Обновляем общее количество после фильтрации
+
+      // Используем общее количество записей из ответа API для пагинации
+      totalRecords.value = response.total || 0;
 
       // Получаем все доступные теги
       if (response.tags && response.tags.length > 0) {
@@ -282,6 +287,8 @@ async function loadCalls() {
 function nextPage() {
   if (currentPage.value * limit.value < totalRecords.value) {
     currentPage.value++;
+    // Прокручиваем вверх для удобства пользователя
+    window.scrollTo({ top: 0, behavior: "smooth" });
     loadCalls();
   }
 }
@@ -289,6 +296,8 @@ function nextPage() {
 function prevPage() {
   if (currentPage.value > 1) {
     currentPage.value--;
+    // Прокручиваем вверх для удобства пользователя
+    window.scrollTo({ top: 0, behavior: "smooth" });
     loadCalls();
   }
 }
