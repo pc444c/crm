@@ -34,7 +34,7 @@
                 :style="{ backgroundColor: tag.color }"
                 class="p-2 hover:opacity-80 transition-opacity text-white rounded"
                 :disabled="isUpdatingTag"
-                @click="openModal(index)"
+                @click="selectTag(tag)"
               >
                 {{ tag.name }}
               </button>
@@ -116,43 +116,6 @@
       </template>
     </UCard>
   </div>
-
-  <!-- Модальное окно выбора статуса -->
-  <UModal v-model:open="isOpen" title="Подтверждение статуса">
-    <template #body>
-      <div class="p-4">
-        <div class="flex flex-col items-center justify-center gap-4 mb-6">
-          <span class="text-lg"
-            >Вы уверены, что хотите выбрать этот статус?</span
-          >
-          <div
-            :style="{ backgroundColor: ModalData.color }"
-            class="p-2 px-4 text-white rounded font-medium"
-          >
-            {{ ModalData.name }}
-          </div>
-
-          <p class="text-gray-500 text-sm text-center">
-            После подтверждения статуса текущая запись будет завершена. Чтобы
-            продолжить работу с новыми записями, нажмите кнопку "Продолжить
-            работать".
-          </p>
-        </div>
-
-        <div class="flex justify-center gap-4">
-          <UButton color="gray" @click="isOpen = false">Отмена</UButton>
-          <UButton
-            color="primary"
-            icon="i-heroicons-check"
-            :loading="isUpdatingTag"
-            @click="confirmTagChange"
-          >
-            Подтвердить
-          </UButton>
-        </div>
-      </div>
-    </template>
-  </UModal>
 </template>
 
 <script setup>
@@ -164,11 +127,9 @@ const toast = useToast();
 
 // Состояния
 const isLoading = ref(false);
-const isOpen = ref(false);
 const isUpdatingTag = ref(false);
 const currentRecord = ref(null);
 const listtag = ref([]);
-const ModalData = ref({});
 const editingComment = ref(false);
 const commentText = ref("");
 const isSavingComment = ref(false);
@@ -303,50 +264,32 @@ const fetchRecord = async () => {
   }
 };
 
-// Метод для открытия модального окна выбора тега
-const openModal = (index) => {
-  isOpen.value = true;
-  ModalData.value = listtag.value[index] || {};
-};
-
-// Подтвердить изменение тега
-const confirmTagChange = async () => {
+// Выбор и назначение тега сразу без подтверждения
+const selectTag = async (tag) => {
   // Проверяем актуальность аутентификации перед каждым запросом
   await auth.checkAuth();
 
-  if (!currentRecord.value || !ModalData.value.name || !auth.isAuthenticated)
-    return;
+  if (!currentRecord.value || !tag.name || !auth.isAuthenticated) return;
 
   isUpdatingTag.value = true;
 
   try {
-    // Находим tagId по имени тега
-    let tagId = null;
-    const tagMatch = listtag.value.find((t) => t.name === ModalData.value.name);
-    if (tagMatch) {
-      tagId = tagMatch.id;
-    }
-
-    if (!tagId) {
-      throw new Error("Не удалось найти ID тега");
-    }
-
     // Назначаем тег записи
     const response = await $fetch("/api/records/setTag", {
       method: "POST",
       body: {
         recordId: currentRecord.value.id,
-        tagId: tagId,
+        tagId: tag.id,
       },
     });
 
     if (response && response.status === "success") {
       // Обновляем текущую запись с новым тегом
-      currentRecord.value.tag = ModalData.value.name;
+      currentRecord.value.tag = tag.name;
       currentRecord.value.tagInfo = {
-        id: tagId,
-        name: ModalData.value.name,
-        color: ModalData.value.color,
+        id: tag.id,
+        name: tag.name,
+        color: tag.color,
       };
 
       toast.add({
@@ -354,9 +297,6 @@ const confirmTagChange = async () => {
         description: "Тег успешно назначен",
         color: "success",
       });
-
-      // Закрываем модальное окно
-      isOpen.value = false;
 
       // Обновляем список звонков через событие
       window.dispatchEvent(new CustomEvent("call-list-updated"));
