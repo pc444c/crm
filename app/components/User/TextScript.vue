@@ -43,7 +43,9 @@
           v-if="globalScripts.length > 0"
           class="sticky top-0 z-10 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 py-2 mb-2"
         >
-          <div class="text-xs font-medium text-blue-600 dark:text-blue-400 uppercase tracking-wide">
+          <div
+            class="text-xs font-medium text-blue-600 dark:text-blue-400 uppercase tracking-wide"
+          >
             <UIcon name="i-heroicons-globe-alt" class="w-3 h-3 inline mr-1" />
             Общие скрипты ({{ globalScripts.length }})
           </div>
@@ -70,7 +72,9 @@
                 </h4>
               </div>
               <div class="flex items-center gap-2">
-                <span class="text-xs text-blue-600 dark:text-blue-400 font-medium">
+                <span
+                  class="text-xs text-blue-600 dark:text-blue-400 font-medium"
+                >
                   Только чтение
                 </span>
                 <UIcon
@@ -87,7 +91,9 @@
           v-if="userScripts.length > 0"
           class="sticky top-0 z-10 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 py-2 mb-2"
         >
-          <div class="text-xs font-medium text-gray-500 uppercase tracking-wide">
+          <div
+            class="text-xs font-medium text-gray-500 uppercase tracking-wide"
+          >
             <UIcon name="i-heroicons-user" class="w-3 h-3 inline mr-1" />
             Мои скрипты ({{ userScripts.length }})
           </div>
@@ -107,11 +113,11 @@
               >
                 {{ script.name }}
               </h4>
-              </div>
             </div>
           </div>
         </div>
       </div>
+    </div>
 
     <!-- Модальное окно для создания/редактирования -->
     <UModal

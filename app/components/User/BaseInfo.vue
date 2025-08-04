@@ -190,28 +190,18 @@
       </div>
 
       <template v-else>
-        <div class="flex flex-col h-full">
-          <!-- Toast UI Editor для комментариев -->
-          <div class="toast-editor-wrapper flex-1">
-            <ClientOnly>
-              <div
-                id="comment-editor"
-                ref="commentEditorElement"
-                class="toast-editor-container"
-              />
-              <template #fallback>
-                <div
-                  class="flex items-center justify-center h-48 bg-neutral-700 rounded"
-                >
-                  <UIcon
-                    name="i-heroicons-arrow-path"
-                    class="animate-spin text-2xl"
-                  />
-                  <span class="ml-2">Загрузка редактора...</span>
-                </div>
-              </template>
-            </ClientOnly>
-          </div>
+        <div class="flex flex-col h-full w-full">
+          <!-- Замена Toast UI Editor на textarea -->
+          <UTextarea
+            v-model="commentText"
+            class="flex-1 h-full w-full min-h-[300px]"
+            style="height: 100% !important; resize: none"
+            placeholder="Комментарий к клиенту..."
+            :rows="16"
+            :ui="{
+              base: 'w-full h-full',
+            }"
+          />
 
           <!-- Убираем кнопку "Сохранить" - комментарий сохраняется автоматически при назначении тега -->
         </div>
@@ -272,7 +262,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, computed, nextTick } from "vue";
+import { ref, onMounted, onUnmounted, computed } from "vue";
 import { useAuthStore } from "~/store/useAuth";
 import { getPhoneRegion, formatPhoneNumber } from "~/utils/phoneRegions";
 
@@ -290,7 +280,10 @@ interface CommentTemplate {
   id: number;
   name: string;
   content: string;
-  is_active: boolean;
+  is_active: boolean | string;
+  created_at?: string | Date;
+  updated_at?: string | Date;
+  created_by?: number;
 }
 
 interface ApiResponse {
@@ -338,8 +331,7 @@ const isEditingComment = ref(false);
 
 // Состояние для шаблона комментария и Toast UI Editor
 const defaultTemplate = ref<CommentTemplate | null>(null);
-const commentEditorElement = ref<HTMLElement | null>(null);
-let commentEditor: unknown = null;
+// Удалены неиспользуемые переменные для Toast UI Editor
 
 // Ссылка на обработчик события для правильной очистки
 const loadRecordHandler = ref<((event: Event) => void) | null>(null);
@@ -481,7 +473,17 @@ const getDefaultTemplate = async () => {
       response.templates.length > 0
     ) {
       // Берем первый активный шаблон как дефолтный
-      defaultTemplate.value = response.templates[0];
+      if (response.templates[0]) {
+        // Создаем объект с необходимыми полями
+        defaultTemplate.value = {
+          id: response.templates[0].id,
+          name: response.templates[0].name,
+          content: response.templates[0].content,
+          is_active: true, // По умолчанию считаем шаблон активным
+        };
+      } else {
+        defaultTemplate.value = null;
+      }
       console.log("Загружен шаблон комментария:", defaultTemplate.value);
     } else {
       console.log("Шаблоны комментариев не найдены");
@@ -491,65 +493,7 @@ const getDefaultTemplate = async () => {
   }
 };
 
-// Инициализация Toast UI Editor
-const initCommentEditor = async () => {
-  console.log("=== ИНИЦИАЛИЗАЦИЯ TOAST UI EDITOR ===");
-
-  if (!commentEditorElement.value) {
-    console.error("DOM элемент для редактора не найден!");
-    return;
-  }
-
-  try {
-    // Динамический импорт Toast UI Editor
-    const EditorModule = await import("@toast-ui/editor");
-    const Editor = EditorModule.default || EditorModule;
-
-    // Импорт стилей
-    await import("@toast-ui/editor/dist/toastui-editor.css");
-    await import("@toast-ui/editor/dist/theme/toastui-editor-dark.css");
-
-    // Создание редактора
-    commentEditor = new Editor({
-      el: commentEditorElement.value,
-      height: "240px",
-      initialEditType: "wysiwyg",
-      previewStyle: "vertical",
-      placeholder: "Комментарий к клиенту...",
-      theme: "dark",
-      usageStatistics: false,
-      hideModeSwitch: true,
-      toolbarItems: [
-        ["bold", "italic"],
-        ["ul", "ol"],
-      ],
-    });
-
-    console.log("Toast UI Editor успешно создан!");
-
-    // Устанавливаем начальное содержимое
-    // ВАЖНО: Если есть существующий комментарий, НЕ перезаписываем его шаблоном
-    let initialContent = "";
-    if (commentText.value && commentText.value.trim() !== "") {
-      // Если есть существующий комментарий - используем его
-      initialContent = commentText.value;
-      console.log("Используем существующий комментарий:", initialContent);
-    } else if (defaultTemplate.value?.content) {
-      // Если комментария нет, но есть шаблон - используем шаблон
-      initialContent = defaultTemplate.value.content;
-      console.log("Используем шаблон комментария:", initialContent);
-    }
-
-    if (initialContent) {
-      (commentEditor as { setHTML: (content: string) => void }).setHTML(
-        initialContent
-      );
-      console.log("Установлено начальное содержимое в редактор");
-    }
-  } catch (error) {
-    console.error("Ошибка при инициализации Toast UI Editor:", error);
-  }
-};
+// Удалено: инициализация комментариев происходит автоматически через v-model
 
 // Получить текущую запись
 const fetchRecord = async () => {
@@ -576,35 +520,14 @@ const fetchRecord = async () => {
       if (response.record.description) {
         commentText.value = response.record.description;
         console.log("Загружен существующий комментарий");
-
-        // Обновляем Toast UI Editor если он инициализирован
-        if (commentEditor) {
-          (commentEditor as { setHTML: (content: string) => void }).setHTML(
-            response.record.description
-          );
-        }
       } else {
         // Если комментария нет, вставляем шаблон
         if (defaultTemplate.value?.content) {
           commentText.value = defaultTemplate.value.content;
           console.log("Вставлен шаблон комментария");
-
-          // Обновляем Toast UI Editor если он инициализирован
-          if (commentEditor) {
-            (commentEditor as { setHTML: (content: string) => void }).setHTML(
-              defaultTemplate.value.content
-            );
-          }
         } else {
           commentText.value = "";
           console.log("Комментарий пустой");
-
-          // Очищаем Toast UI Editor если он инициализирован
-          if (commentEditor) {
-            (commentEditor as { setHTML: (content: string) => void }).setHTML(
-              ""
-            );
-          }
         }
       }
 
@@ -628,10 +551,13 @@ const fetchRecord = async () => {
     console.error("Ошибка при получении записи:", error);
 
     // Проверка на ошибку USER_NOT_EXISTS
+    const errorObj = error as {
+      data?: { code?: string; data?: { errorCode?: string } };
+    };
     if (
-      error.data &&
-      (error.data.code === "USER_NOT_EXISTS" ||
-        error.data.data?.errorCode === "USER_NOT_EXISTS")
+      errorObj.data &&
+      (errorObj.data.code === "USER_NOT_EXISTS" ||
+        errorObj.data.data?.errorCode === "USER_NOT_EXISTS")
     ) {
       auth.setErrorCode("USER_NOT_EXISTS");
       navigateTo("/?error=USER_NOT_EXISTS");
@@ -671,35 +597,14 @@ const loadSpecificRecord = async (recordId: number) => {
       ) {
         commentText.value = response.record.description;
         console.log("Загружен существующий комментарий из перезвона");
-
-        // Обновляем Toast UI Editor если он инициализирован
-        if (commentEditor) {
-          (commentEditor as { setHTML: (content: string) => void }).setHTML(
-            response.record.description
-          );
-        }
       } else {
         // Если комментария нет, вставляем шаблон
         if (defaultTemplate.value?.content) {
           commentText.value = defaultTemplate.value.content;
           console.log("Вставлен шаблон комментария в перезвон");
-
-          // Обновляем Toast UI Editor если он инициализирован
-          if (commentEditor) {
-            (commentEditor as { setHTML: (content: string) => void }).setHTML(
-              defaultTemplate.value.content
-            );
-          }
         } else {
           commentText.value = "";
           console.log("Комментарий пустой, шаблон не найден");
-
-          // Очищаем Toast UI Editor если он инициализирован
-          if (commentEditor) {
-            (commentEditor as { setHTML: (content: string) => void }).setHTML(
-              ""
-            );
-          }
         }
       }
 
@@ -746,9 +651,7 @@ const selectTag = async (tag: Tag) => {
 
   try {
     // Сохраняем комментарий перед назначением тега
-    const commentContent = commentEditor
-      ? (commentEditor as { getHTML: () => string }).getHTML()
-      : commentText.value;
+    const commentContent = commentText.value;
 
     // Назначаем тег записи
     const response = await $fetch("/api/records/setTag", {
@@ -866,10 +769,15 @@ const setCallback = async () => {
   } catch (error) {
     console.error("Ошибка при назначении перезвона:", error);
 
+    const errorObj = error as {
+      data?: { code?: string; data?: { errorCode?: string } };
+      message?: string;
+    };
+
     if (
-      error.data &&
-      (error.data.code === "USER_NOT_EXISTS" ||
-        error.data.data?.errorCode === "USER_NOT_EXISTS")
+      errorObj.data &&
+      (errorObj.data.code === "USER_NOT_EXISTS" ||
+        errorObj.data.data?.errorCode === "USER_NOT_EXISTS")
     ) {
       auth.setErrorCode("USER_NOT_EXISTS");
       navigateTo("/?error=USER_NOT_EXISTS");
@@ -878,7 +786,7 @@ const setCallback = async () => {
 
     toast.add({
       title: "Ошибка",
-      description: error.message || "Не удалось назначить перезвон",
+      description: errorObj.message || "Не удалось назначить перезвон",
       color: "error",
     });
   } finally {
@@ -923,11 +831,7 @@ onMounted(async () => {
     console.log("Загружаем первую запись");
     await fetchRecord();
 
-    // Ждем готовности DOM и инициализируем редактор
-    await nextTick();
-    setTimeout(async () => {
-      await initCommentEditor();
-    }, 500);
+    // Больше не нужно инициализировать редактор для textarea
 
     console.log("=== onMounted ЗАВЕРШЕН ===");
   }
