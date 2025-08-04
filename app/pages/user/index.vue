@@ -28,7 +28,9 @@ interface CallbackRecord {
   fio: string;
   phone: string;
   callback_time: string;
+
   callback_comment?: string;
+
   description?: string;
 }
 

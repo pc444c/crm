@@ -53,6 +53,7 @@
               {{ formatDateTime(callback.callback_time) }}
             </div>
             <div
+
               v-if="callback.callback_comment"
               class="text-xs text-blue-600 dark:text-blue-400 mt-1 p-2 bg-blue-50 dark:bg-blue-900/20 rounded border-l-2 border-blue-300"
             >
@@ -60,6 +61,7 @@
               {{ callback.callback_comment }}
             </div>
             <div
+
               v-if="callback.description"
               class="text-xs text-gray-600 dark:text-gray-400 mt-1 italic"
             >
@@ -111,7 +113,9 @@ interface CallbackRecord {
   fio: string;
   phone: string;
   callback_time: string;
+
   callback_comment?: string;
+
   description?: string;
   city?: string;
   address?: string;

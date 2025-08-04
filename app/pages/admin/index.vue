@@ -10,6 +10,22 @@
       <admin-stat-user-offline class="w-full" />
       <admin-stat-user-online class="w-full" />
     </section>
+
+
+    <section class="w-full p-4">
+      <USeparator
+        color="primary"
+        label="Управление глобальными скриптами"
+        class="mb-4"
+      />
+      <AdminGlobalScripts />
+    </section>
+
+    <section class="w-full p-4">
+      <USeparator color="secondary" label="Шаблоны комментариев" class="mb-4" />
+      <AdminCommentTemplates />
+    </section>
+
   </div>
 </template>
 

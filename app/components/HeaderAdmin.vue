@@ -75,6 +75,7 @@ const items = ref<NavigationMenuItem[][]>([
           description: "Управление шаблонами комментариев",
           to: "/admin/comment-templates",
         },
+
       ],
     },
     // {

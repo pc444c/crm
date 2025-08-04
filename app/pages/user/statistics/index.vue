@@ -292,6 +292,10 @@
       search-placeholder="Поиск по телефону..."
       :page-size="20"
       empty-message="Записи не найдены"
+
+      show-export
+      @export="exportTable"
+
       @page-change="scrollToTable"
     >
       <template #cell-tag="{ item }">
@@ -365,6 +369,15 @@ const tableCard = ref();
 // Конфигурация колонок для таблицы
 const callsColumns = [
   {
+
+
+    key: "id",
+    label: "ID",
+    sortable: true,
+    class: "font-medium text-gray-900 dark:text-gray-100",
+  },
+  {
+
     key: "phone",
     label: "Телефон",
     sortable: true,
@@ -748,6 +761,49 @@ async function loadStatistics() {
     loading.value = false;
   }
 }
+
+
+
+function exportTable() {
+  try {
+    // Простой экспорт в CSV
+    const headers = ["ID", "Телефон", "Тег", "Дата обновления"];
+    const rows = userCalls.value.map((call) => [
+      call.id,
+      call.phone,
+      getTagName(call.tag),
+      formatDateTime(call.status_updated_at),
+    ]);
+
+    const csvContent = [headers, ...rows]
+      .map((row) => row.map((cell) => `"${cell}"`).join(","))
+      .join("\n");
+
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = `call_statistics_${
+      new Date().toISOString().split("T")[0]
+    }.csv`;
+    link.click();
+
+    const toast = useToast();
+    toast.add({
+      title: "Успешно",
+      description: "Таблица экспортирована",
+      color: "success",
+    });
+  } catch (error) {
+    console.error("Ошибка при экспорте:", error);
+    const toast = useToast();
+    toast.add({
+      title: "Ошибка",
+      description: "Не удалось экспортировать таблицу",
+      color: "error",
+    });
+  }
+}
+
 
 // Загружаем статистику при монтировании с дефолтным периодом
 onMounted(() => {
