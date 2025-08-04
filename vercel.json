@@ -1,7 +1,0 @@
-{
-  "buildCommand": "npx nuxi build",
-  "outputDirectory": ".output",
-  "env": {
-    "DATABASE_URL": "postgresql://neondb_owner:npg_qIbwU4eBNhv0@ep-square-salad-a26ye40t-pooler.eu-central-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require"
-  }
-}
