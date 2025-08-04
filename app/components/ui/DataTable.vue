@@ -209,19 +209,6 @@
       <div v-else class="text-sm text-gray-500 dark:text-gray-400">
         Все записи на одной странице
       </div>
-
-
-      <!-- Размер страницы -->
-      <div class="flex items-center gap-2 text-sm">
-        <span class="text-gray-500 dark:text-gray-400">Показать:</span>
-        <USelect
-          v-model="selectedPageSize"
-          :options="pageSizeOptions"
-          size="sm"
-          class="w-20"
-        />
-      </div>
-
     </div>
   </UCard>
 </template>
@@ -272,19 +259,6 @@ const sortBy = ref<string>("");
 const sortOrder = ref<"asc" | "desc">("desc");
 
 const pageInput = ref("");
-
-
-const selectedPageSize = ref(props.pageSize);
-
-
-// Опции размера страницы
-const pageSizeOptions = [
-  { label: "10", value: 10 },
-  { label: "20", value: 20 },
-  { label: "50", value: 50 },
-  { label: "100", value: 100 },
-];
-
 
 // Вычисляемые свойства
 const totalItems = computed(() => props.items.length);
@@ -442,13 +416,6 @@ function goToInputPage() {
 
 // Сброс пагинации при поиске
 watch(searchQuery, () => {
-  currentPage.value = 1;
-  pageInput.value = "1";
-});
-
-
-// Сброс пагинации при изменении размера страницы
-watch(selectedPageSize, () => {
   currentPage.value = 1;
   pageInput.value = "1";
 });
