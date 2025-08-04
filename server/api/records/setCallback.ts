@@ -19,7 +19,7 @@ export default defineEventHandler(async (event) => {
     }
 
     const body = await readBody(event);
-    const { recordId, tagId, callbackTime, comment } = body;
+    const { recordId, tagId, callbackTime, callbackComment } = body;
 
     // Проверяем обязательные поля
     if (!recordId || !tagId || !callbackTime) {
@@ -59,13 +59,13 @@ export default defineEventHandler(async (event) => {
       };
     }
 
-    // Обновляем запись с новым тегом, временем перезвона и комментарием
+    // Обновляем запись с новым тегом, временем перезвона и комментарием к перезвону
     const updateData: {
       tag: string;
       callback_time: Date;
       status_updated_at: Date;
       user_id: number;
-      description?: string;
+      callback_comment?: string;
     } = {
       tag: tagName,
       callback_time: new Date(callbackTime),
@@ -73,9 +73,9 @@ export default defineEventHandler(async (event) => {
       user_id: userData.id,
     };
 
-    // Если есть комментарий, добавляем его
-    if (comment) {
-      updateData.description = comment;
+    // Если есть комментарий к перезвону, добавляем его в отдельное поле
+    if (callbackComment) {
+      updateData.callback_comment = callbackComment;
     }
 
     const [updatedRecord] = await db

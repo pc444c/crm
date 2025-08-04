@@ -11,7 +11,7 @@ export interface TokenPayload {
 
 // Секретный ключ для подписи JWT токенов
 // В реальном приложении следует хранить его в переменных окружения
-const SECRET_KEY = "your-secret-key-should-be-stored-in-env-file";
+const SECRET_KEY = process.env.JWT_SECRET || "your-secret-key";
 
 // Срок действия токена (по умолчанию - 24 часа)
 const TOKEN_EXPIRATION = "24h";

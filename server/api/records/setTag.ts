@@ -19,7 +19,7 @@ export default defineEventHandler(async (event) => {
     }
 
     const body = await readBody(event);
-    const { recordId, tagId } = body;
+    const { recordId, tagId, comment } = body;
 
     // Проверяем обязательные поля
     if (!recordId || !tagId) {
@@ -76,14 +76,21 @@ export default defineEventHandler(async (event) => {
     // Запоминаем текущего пользователя, который работал с записью
     // const currentUserId = currentRecord[0].user_id;
 
-    // Обновляем запись с новым тегом и сохраняем ID пользователя, который его обработал
+    // Обновляем запись с новым тегом, комментарием и сохраняем ID пользователя, который его обработал
+    const updateData: Record<string, unknown> = {
+      tag: tagName,
+      status_updated_at: new Date(),
+      user_id: userData.id, // Сохраняем ID пользователя, который назначил тег
+    };
+
+    // Если комментарий передан, сохраняем его
+    if (comment !== undefined) {
+      updateData.description = comment;
+    }
+
     const [updatedRecord] = await db
       .update(records)
-      .set({
-        tag: tagName,
-        status_updated_at: new Date(),
-        user_id: userData.id, // Сохраняем ID пользователя, который назначил тег
-      })
+      .set(updateData)
       .where(eq(records.id, recordId))
       .returning();
 

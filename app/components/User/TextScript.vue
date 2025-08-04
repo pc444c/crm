@@ -21,7 +21,10 @@
       <UIcon name="i-heroicons-arrow-path" class="animate-spin text-2xl" />
     </div>
 
-    <div v-else-if="scripts.length === 0" class="text-center py-8">
+    <div
+      v-else-if="userScripts.length === 0 && globalScripts.length === 0"
+      class="text-center py-8"
+    >
       <UIcon
         name="i-heroicons-document-text"
         class="text-4xl text-gray-400 mb-2"
@@ -33,9 +36,59 @@
     </div>
 
     <div v-else class="space-y-2 max-h-96 overflow-y-auto">
+      <!-- Разделитель для глобальных скриптов -->
       <div
-        v-for="script in scripts"
-        :key="script.id"
+        v-if="globalScripts.length > 0"
+        class="text-xs font-medium text-blue-600 dark:text-blue-400 uppercase tracking-wide mb-2"
+      >
+        <UIcon name="i-heroicons-globe-alt" class="w-3 h-3 inline mr-1" />
+        Общие скрипты ({{ globalScripts.length }})
+      </div>
+
+      <!-- Глобальные скрипты -->
+      <div
+        v-for="script in globalScripts"
+        :key="`global-${script.id}`"
+        class="group p-3 border border-blue-200 dark:border-blue-700 bg-blue-50 dark:bg-blue-900/20 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-900/30 hover:border-blue-300 dark:hover:border-blue-600 transition-all duration-200 cursor-pointer hover:shadow-sm"
+        @click="viewScript(script)"
+      >
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <UIcon
+              name="i-heroicons-globe-alt"
+              class="text-blue-600 dark:text-blue-400 w-4 h-4 flex-shrink-0"
+            />
+            <h4
+              class="font-medium text-gray-900 dark:text-gray-100 group-hover:text-blue-700 dark:group-hover:text-blue-300 transition-colors truncate"
+            >
+              {{ script.name }}
+            </h4>
+          </div>
+          <div class="flex items-center gap-2">
+            <span class="text-xs text-blue-600 dark:text-blue-400 font-medium">
+              Только чтение
+            </span>
+            <UIcon
+              name="i-heroicons-chevron-right"
+              class="text-blue-500 group-hover:text-blue-600 transition-colors flex-shrink-0"
+            />
+          </div>
+        </div>
+      </div>
+
+      <!-- Разделитель для пользовательских скриптов -->
+      <div
+        v-if="userScripts.length > 0"
+        class="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2 mt-4"
+      >
+        <UIcon name="i-heroicons-user" class="w-3 h-3 inline mr-1" />
+        Мои скрипты ({{ userScripts.length }})
+      </div>
+
+      <!-- Пользовательские скрипты -->
+      <div
+        v-for="script in userScripts"
+        :key="`user-${script.id}`"
         class="group p-3 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 hover:border-blue-300 dark:hover:border-blue-600 transition-all duration-200 cursor-pointer hover:shadow-sm"
         @click="viewScript(script)"
       >
@@ -45,10 +98,16 @@
           >
             {{ script.name }}
           </h4>
-          <UIcon
-            name="i-heroicons-chevron-right"
-            class="text-gray-400 group-hover:text-blue-500 transition-colors flex-shrink-0 ml-2"
-          />
+          <div class="flex items-center gap-2">
+            <UIcon
+              name="i-heroicons-pencil-square"
+              class="text-gray-400 hover:text-blue-500 w-4 h-4"
+            />
+            <UIcon
+              name="i-heroicons-chevron-right"
+              class="text-gray-400 group-hover:text-blue-500 transition-colors flex-shrink-0"
+            />
+          </div>
         </div>
       </div>
     </div>
@@ -148,7 +207,9 @@
       <!-- Нижняя панель с кнопками -->
       <template #footer>
         <div v-if="viewingScript" class="flex justify-between w-full">
+          <!-- Кнопка удаления только для пользовательских скриптов -->
           <UButton
+            v-if="!viewingScript.isGlobal"
             color="error"
             variant="soft"
             icon="i-heroicons-trash"
@@ -156,11 +217,25 @@
           >
             Удалить
           </UButton>
+
+          <!-- Индикатор для глобальных скриптов -->
+          <div
+            v-else
+            class="flex items-center gap-2 text-yellow-600 dark:text-yellow-400"
+          >
+            <UIcon name="i-heroicons-globe-alt" class="w-4 h-4" />
+            <span class="text-sm font-medium"
+              >Общий скрипт (только чтение)</span
+            >
+          </div>
+
           <div class="flex gap-3">
             <UButton color="neutral" variant="soft" @click="closeViewModal">
               Закрыть
             </UButton>
+            <!-- Кнопка редактирования только для пользовательских скриптов -->
             <UButton
+              v-if="!viewingScript.isGlobal"
               color="primary"
               icon="i-heroicons-pencil"
               @click="editFromView"
@@ -175,7 +250,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, nextTick } from "vue";
+import { ref, onMounted, nextTick, computed } from "vue";
 import { useAuthStore } from "~/store/useAuth";
 
 const auth = useAuthStore();
@@ -187,6 +262,7 @@ interface Script {
   content: string;
   created_at: string;
   updated_at: string;
+  isGlobal?: boolean; // Добавляем флаг для глобальных скриптов
 }
 
 // Состояния
@@ -198,6 +274,14 @@ const saving = ref(false);
 const isEditing = ref(false);
 const editingScript = ref<Script | null>(null);
 const viewingScript = ref<Script | null>(null);
+
+// Computed properties для разделения скриптов
+const userScripts = computed(() =>
+  scripts.value.filter((script) => !script.isGlobal)
+);
+const globalScripts = computed(() =>
+  scripts.value.filter((script) => script.isGlobal)
+);
 
 // TOAST UI Editor
 const editorElement = ref<HTMLElement | null>(null);
@@ -350,13 +434,29 @@ const form = ref({
 const loadScripts = async () => {
   try {
     loading.value = true;
-    const response = (await $fetch("/api/user/scripts/list", {
+
+    // Загружаем пользовательские скрипты
+    const userResponse = (await $fetch("/api/user/scripts/list", {
       method: "GET",
     })) as { status: string; scripts: Script[] };
 
-    if (response.status === "success") {
-      scripts.value = response.scripts;
-    }
+    // Загружаем глобальные скрипты
+    const globalResponse = (await $fetch("/api/scripts/global", {
+      method: "GET",
+    })) as { status: string; scripts: Script[] };
+
+    const userScripts =
+      userResponse.status === "success" ? userResponse.scripts : [];
+    const globalScripts =
+      globalResponse.status === "success"
+        ? globalResponse.scripts.map((script) => ({
+            ...script,
+            isGlobal: true, // Помечаем как глобальный
+          }))
+        : [];
+
+    // Объединяем скрипты: сначала пользовательские, потом глобальные
+    scripts.value = [...userScripts, ...globalScripts];
   } catch (error) {
     console.error("Ошибка загрузки скриптов:", error);
     toast.add({

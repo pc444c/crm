@@ -22,6 +22,27 @@
       "when": 1754057480055,
       "tag": "0002_furry_rawhide_kid",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1754295951294,
+      "tag": "0003_light_domino",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1754299285568,
+      "tag": "0004_slippery_venom",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1754306212263,
+      "tag": "0005_thin_magma",
+      "breakpoints": true
     }
   ]
 }

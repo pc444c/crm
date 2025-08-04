@@ -3,8 +3,11 @@ import {
   serial,
   integer,
   varchar,
+  text,
   timestamp,
 } from "drizzle-orm/pg-core";
+import { drizzle } from "drizzle-orm/postgres-js";
+import postgres from "postgres";
 export const users = pgTable("users", {
   id: integer().primaryKey().generatedAlwaysAsIdentity(),
   login: varchar({ length: 255 }).notNull(),
@@ -52,6 +55,8 @@ export const records = pgTable("records", {
   used_at: timestamp("used_at", { precision: 3 }),
   // поле для времени перезвона
   callback_time: timestamp("callback_time", { precision: 3 }),
+  // поле для комментария к перезвону
+  callback_comment: text("callback_comment"),
   // поле для хранения статуса
 });
 // tags.ts
@@ -74,3 +79,33 @@ export const userScripts = pgTable("user_scripts", {
   created_at: timestamp("created_at", { precision: 3 }).defaultNow().notNull(),
   updated_at: timestamp("updated_at", { precision: 3 }).defaultNow().notNull(),
 });
+
+// global_scripts.ts - Таблица для глобальных скриптов (создаются админами)
+export const globalScripts = pgTable("global_scripts", {
+  id: serial("id").primaryKey(),
+  name: varchar("name", { length: 255 }).notNull(), // Название скрипта
+  content: varchar("content", { length: 10000 }).notNull(), // HTML содержимое скрипта
+  created_by: integer("created_by")
+    .notNull()
+    .references(() => users.id), // Админ, который создал скрипт
+  is_active: varchar("is_active", { length: 10 }).default("true").notNull(), // Активен ли скрипт
+  created_at: timestamp("created_at", { precision: 3 }).defaultNow().notNull(),
+  updated_at: timestamp("updated_at", { precision: 3 }).defaultNow().notNull(),
+});
+
+// comment_templates.ts - Таблица для шаблонов комментариев (создаются админами)
+export const commentTemplates = pgTable("comment_templates", {
+  id: serial("id").primaryKey(),
+  name: varchar("name", { length: 255 }).notNull(), // Название шаблона
+  content: varchar("content", { length: 1000 }).notNull(), // Текст шаблона комментария
+  created_by: integer("created_by")
+    .notNull()
+    .references(() => users.id), // Админ, который создал шаблон
+  is_active: varchar("is_active", { length: 10 }).default("true").notNull(), // Активен ли шаблон
+  created_at: timestamp("created_at", { precision: 3 }).defaultNow().notNull(),
+  updated_at: timestamp("updated_at", { precision: 3 }).defaultNow().notNull(),
+});
+
+const connectionString = process.env.DATABASE_URL!;
+const client = postgres(connectionString);
+export const db = drizzle({ client });

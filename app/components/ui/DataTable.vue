@@ -5,8 +5,17 @@
         <div class="flex items-center gap-2">
           <UIcon :name="headerIcon" class="text-primary" />
           <span class="font-semibold">
-            {{ title }} ({{ totalItems }}) - Показано:
-            {{ paginatedItems.length }} из {{ filteredItems.length }}
+            {{ title }} ({{ totalItems }})
+            <span
+              v-if="totalPages > 1"
+              class="text-gray-500 dark:text-gray-400 font-normal"
+            >
+              - Стр. {{ currentPage }} из {{ totalPages }}
+            </span>
+            <span class="text-gray-500 dark:text-gray-400 font-normal">
+              - Показано: {{ paginatedItems.length }} из
+              {{ filteredItems.length }}
+            </span>
           </span>
         </div>
         <div class="flex items-center gap-2">
@@ -100,7 +109,7 @@
 
     <!-- Пагинация -->
     <div
-      v-if="totalPages > 1"
+      v-if="filteredItems.length > 0"
       class="flex flex-col sm:flex-row justify-between items-center bg-gray-50 dark:bg-gray-800 px-4 py-3 rounded-b-md border-t border-gray-200 dark:border-gray-700 gap-3"
     >
       <!-- Информация о записях -->
@@ -112,13 +121,14 @@
       </div>
 
       <!-- Кнопки пагинации -->
-      <div class="flex items-center gap-1">
+      <div v-if="totalPages > 1" class="flex items-center gap-1">
         <!-- Первая страница -->
         <UButton
           size="sm"
           color="primary"
           variant="ghost"
           icon="i-heroicons-chevron-double-left"
+          title="Первая страница"
           :disabled="currentPage === 1"
           @click="goToPage(1)"
         />
@@ -129,6 +139,7 @@
           color="primary"
           variant="ghost"
           icon="i-heroicons-chevron-left"
+          title="Предыдущая страница"
           :disabled="currentPage === 1"
           @click="prevPage"
         />
@@ -142,6 +153,7 @@
               :color="currentPage === page ? 'primary' : 'neutral'"
               :variant="currentPage === page ? 'solid' : 'ghost'"
               class="min-w-[36px]"
+              :title="`Страница ${page}`"
               @click="goToPage(page as number)"
             >
               {{ page }}
@@ -155,12 +167,28 @@
           </template>
         </div>
 
+        <!-- Быстрый переход к странице (только для больших таблиц) -->
+        <div v-if="totalPages > 10" class="flex items-center gap-2 ml-2">
+          <span class="text-xs text-gray-500 dark:text-gray-400">Стр.:</span>
+          <UInput
+            v-model="pageInput"
+            type="number"
+            :min="1"
+            :max="totalPages"
+            size="sm"
+            class="w-16"
+            @keyup.enter="goToInputPage"
+            @blur="goToInputPage"
+          />
+        </div>
+
         <!-- Следующая страница -->
         <UButton
           size="sm"
           color="primary"
           variant="ghost"
           icon="i-heroicons-chevron-right"
+          title="Следующая страница"
           :disabled="currentPage >= totalPages"
           @click="nextPage"
         />
@@ -171,9 +199,15 @@
           color="primary"
           variant="ghost"
           icon="i-heroicons-chevron-double-right"
+          title="Последняя страница"
           :disabled="currentPage >= totalPages"
           @click="goToPage(totalPages)"
         />
+      </div>
+
+      <!-- Если только одна страница, показываем инфо -->
+      <div v-else class="text-sm text-gray-500 dark:text-gray-400">
+        Все записи на одной странице
       </div>
 
       <!-- Размер страницы -->
@@ -191,6 +225,7 @@
 </template>
 
 <script setup lang="ts">
+import { computed, ref, watch, onMounted } from "vue";
 interface Column {
   key: string;
   label: string;
@@ -234,6 +269,7 @@ const currentPage = ref(1);
 const sortBy = ref<string>("");
 const sortOrder = ref<"asc" | "desc">("desc");
 const selectedPageSize = ref(props.pageSize);
+const pageInput = ref("");
 
 // Опции размера страницы
 const pageSizeOptions = [
@@ -382,17 +418,40 @@ function prevPage() {
 function goToPage(page: number) {
   if (page >= 1 && page <= totalPages.value) {
     currentPage.value = page;
+    pageInput.value = String(page);
     emit("pageChange", currentPage.value);
+  }
+}
+
+function goToInputPage() {
+  const page = parseInt(pageInput.value);
+  if (!isNaN(page) && page >= 1 && page <= totalPages.value) {
+    goToPage(page);
+  } else {
+    // Возвращаем к текущей странице если ввод некорректный
+    pageInput.value = String(currentPage.value);
   }
 }
 
 // Сброс пагинации при поиске
 watch(searchQuery, () => {
   currentPage.value = 1;
+  pageInput.value = "1";
 });
 
 // Сброс пагинации при изменении размера страницы
 watch(selectedPageSize, () => {
   currentPage.value = 1;
+  pageInput.value = "1";
+});
+
+// Синхронизация поля ввода с текущей страницей
+watch(currentPage, (newPage) => {
+  pageInput.value = String(newPage);
+});
+
+// Инициализация pageInput
+onMounted(() => {
+  pageInput.value = String(currentPage.value);
 });
 </script>

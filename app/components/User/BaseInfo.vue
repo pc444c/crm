@@ -51,8 +51,114 @@
             </UButton>
           </div>
 
+          <!-- Информация о телефоне и быстрые действия -->
+          <div
+            v-if="currentRecord?.phone"
+            class="bg-neutral-700 p-4 rounded-lg"
+          >
+            <div class="flex flex-col gap-3">
+              <div class="flex items-center justify-between">
+                <h4 class="text-lg font-semibold text-blue-400">
+                  📞 Телефон и контакты
+                </h4>
+                <div class="text-sm text-gray-400">
+                  {{ phoneRegion?.region }}
+                  <span v-if="phoneRegion?.operator" class="text-blue-400">
+                    ({{ phoneRegion.operator }})
+                  </span>
+                </div>
+              </div>
+
+              <div class="text-xl font-mono text-white">
+                {{ formattedPhone }}
+              </div>
+
+              <!-- Кнопки для звонков и сообщений -->
+              <div class="flex flex-wrap gap-2">
+                <!-- MicroSIP -->
+                <UButton
+                  color="primary"
+                  icon="i-heroicons-phone-solid"
+                  size="sm"
+                  :to="microsipLink"
+                  external
+                  target="_blank"
+                >
+                  MicroSIP
+                </UButton>
+
+                <!-- WhatsApp -->
+                <UButton
+                  color="success"
+                  icon="i-heroicons-chat-bubble-left-right"
+                  size="sm"
+                  :to="whatsappLink"
+                  external
+                  target="_blank"
+                >
+                  WhatsApp
+                </UButton>
+
+                <!-- Viber -->
+                <UButton
+                  color="secondary"
+                  icon="i-heroicons-chat-bubble-oval-left-ellipsis"
+                  size="sm"
+                  :to="viberLink"
+                  external
+                  target="_blank"
+                >
+                  Viber
+                </UButton>
+
+                <!-- Копировать номер -->
+                <UButton
+                  color="neutral"
+                  icon="i-heroicons-clipboard"
+                  size="sm"
+                  @click="copyPhone"
+                >
+                  Копировать
+                </UButton>
+              </div>
+            </div>
+          </div>
+
           <!-- Разделитель -->
           <USeparator color="primary" label="Основная информация" />
+
+          <!-- Информация о перезвоне (если есть) -->
+          <div
+            v-if="
+              currentRecord?.tag === 'ПЕРЕЗВОН' && currentRecord?.callback_time
+            "
+            class="bg-orange-900/30 border border-orange-600 p-4 rounded-lg mb-4"
+          >
+            <div class="flex items-center gap-2 mb-2">
+              <UIcon name="i-heroicons-phone" class="text-orange-400" />
+              <h4 class="text-lg font-semibold text-orange-400">
+                Информация о перезвоне
+              </h4>
+            </div>
+
+            <div class="grid grid-cols-1 gap-2 text-sm">
+              <div>
+                <span class="text-gray-400">Время перезвона:</span>
+                <span class="text-white ml-2 font-mono">
+                  {{ formatCallbackTime(currentRecord.callback_time) }}
+                </span>
+              </div>
+
+              <div v-if="currentRecord.callback_comment" class="mt-2">
+                <span class="text-gray-400">Причина перезвона:</span>
+                <div
+                  class="text-white mt-1 p-2 bg-orange-900/20 rounded border-l-2 border-orange-500"
+                >
+                  {{ currentRecord.callback_comment }}
+                </div>
+              </div>
+            </div>
+          </div>
 
           <!-- Информация о текущей записи -->
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-4">
@@ -77,16 +183,6 @@
     <UCard class="w-full lg:w-1/3 bg-neutral-800 text-white">
       <div class="flex justify-between items-center">
         <USeparator color="primary" label="Комментарий к клиенту" />
-        <UButton
-          v-if="currentRecord"
-          size="xs"
-          color="primary"
-          icon="i-heroicons-pencil-square"
-          :disabled="!currentRecord"
-          @click="editingComment = true"
-        >
-          Редактировать
-        </UButton>
       </div>
 
       <div v-if="!currentRecord" class="text-center text-gray-400 py-8">
@@ -94,34 +190,30 @@
       </div>
 
       <template v-else>
-        <div
-          v-if="!editingComment"
-          class="text-lg whitespace-pre-line leading-relaxed text-gray-200 mt-4"
-        >
-          {{ currentRecord.description || "Комментарий отсутствует" }}
-        </div>
-
-        <div v-else class="mt-4">
-          <UTextarea
-            v-model="commentText"
-            placeholder="Введите комментарий к клиенту"
-            :rows="6"
-            class="w-full"
-          />
-
-          <div class="flex justify-end gap-2 mt-4">
-            <UButton size="sm" color="neutral" @click="cancelEditComment"
-              >Отмена</UButton
-            >
-            <UButton
-              size="sm"
-              color="primary"
-              :loading="isSavingComment"
-              @click="saveComment"
-            >
-              Сохранить
-            </UButton>
+        <div class="flex flex-col h-full">
+          <!-- Toast UI Editor для комментариев -->
+          <div class="toast-editor-wrapper flex-1">
+            <ClientOnly>
+              <div
+                id="comment-editor"
+                ref="commentEditorElement"
+                class="toast-editor-container"
+              />
+              <template #fallback>
+                <div
+                  class="flex items-center justify-center h-48 bg-neutral-700 rounded"
+                >
+                  <UIcon
+                    name="i-heroicons-arrow-path"
+                    class="animate-spin text-2xl"
+                  />
+                  <span class="ml-2">Загрузка редактора...</span>
+                </div>
+              </template>
+            </ClientOnly>
           </div>
+
+          <!-- Убираем кнопку "Сохранить" - комментарий сохраняется автоматически при назначении тега -->
         </div>
       </template>
     </UCard>
@@ -149,10 +241,12 @@
             />
           </UFormField>
 
-          <UFormField label="Комментарий (необязательно)">
+          <UFormField
+            label="Комментарий к перезвону (отдельно от основного комментария)"
+          >
             <UTextarea
               v-model="callbackComment"
-              placeholder="Дополнительная информация для перезвона..."
+              placeholder="Причина перезвона, дополнительная информация..."
               :rows="3"
             />
           </UFormField>
@@ -178,8 +272,9 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from "vue";
+import { ref, onMounted, onUnmounted, computed, nextTick } from "vue";
 import { useAuthStore } from "~/store/useAuth";
+import { getPhoneRegion, formatPhoneNumber } from "~/utils/phoneRegions";
 
 const auth = useAuthStore();
 const toast = useToast();
@@ -191,13 +286,20 @@ interface Tag {
   color: string;
 }
 
+interface CommentTemplate {
+  id: number;
+  name: string;
+  content: string;
+  is_active: boolean;
+}
+
 interface ApiResponse {
   success: boolean;
-  record?: Record;
+  record?: CallRecord;
   error?: string;
 }
 
-interface Record {
+interface CallRecord {
   id: number;
   fio?: string;
   phone?: string;
@@ -216,17 +318,16 @@ interface Record {
     color: string;
   };
   callback_time?: string;
+  callback_comment?: string;
   [key: string]: unknown;
 }
 
 // Состояния
 const isLoading = ref(false);
 const isUpdatingTag = ref(false);
-const currentRecord = ref<Record | null>(null);
+const currentRecord = ref<CallRecord | null>(null);
 const listtag = ref<Tag[]>([]);
-const editingComment = ref(false);
 const commentText = ref("");
-const isSavingComment = ref(false);
 const showCallbackModal = ref(false);
 const isSettingCallback = ref(false);
 const callbackDateTime = ref("");
@@ -235,8 +336,54 @@ const noMoreRecords = ref(false);
 const recordEndMessage = ref("");
 const isEditingComment = ref(false);
 
+// Состояние для шаблона комментария и Toast UI Editor
+const defaultTemplate = ref<CommentTemplate | null>(null);
+const commentEditorElement = ref<HTMLElement | null>(null);
+let commentEditor: unknown = null;
+
 // Ссылка на обработчик события для правильной очистки
 const loadRecordHandler = ref<((event: Event) => void) | null>(null);
+
+// Computed properties для телефона и ссылок
+const phoneRegion = computed(() => {
+  return currentRecord.value?.phone
+    ? getPhoneRegion(currentRecord.value.phone)
+    : null;
+});
+
+const formattedPhone = computed(() => {
+  return currentRecord.value?.phone
+    ? formatPhoneNumber(currentRecord.value.phone)
+    : "";
+});
+
+const cleanPhone = computed(() => {
+  if (!currentRecord.value?.phone) return "";
+  return currentRecord.value.phone.replace(/[^\d]/g, "");
+});
+
+const microsipLink = computed(() => {
+  if (!cleanPhone.value) return "#";
+  return `sip:${cleanPhone.value}`;
+});
+
+const whatsappLink = computed(() => {
+  if (!cleanPhone.value) return "#";
+  // WhatsApp ссылка с российским кодом
+  const phone = cleanPhone.value.startsWith("8")
+    ? "7" + cleanPhone.value.slice(1)
+    : cleanPhone.value;
+  return `https://wa.me/${phone}`;
+});
+
+const viberLink = computed(() => {
+  if (!cleanPhone.value) return "#";
+  // Viber ссылка
+  const phone = cleanPhone.value.startsWith("8")
+    ? "7" + cleanPhone.value.slice(1)
+    : cleanPhone.value;
+  return `viber://chat?number=%2B${phone}`;
+});
 
 // Минимальное время для перезвона (текущее время + 5 минут)
 const minDateTime = computed(() => {
@@ -248,7 +395,6 @@ const minDateTime = computed(() => {
 // Поля для отображения
 const displayFields = [
   { key: "fio", label: "ФИО" },
-  { key: "phone", label: "Телефон" },
   { key: "city", label: "Город" },
   { key: "region", label: "Область" },
   { key: "address", label: "Адрес" },
@@ -261,6 +407,22 @@ const displayFields = [
 // Получить значение поля
 const getFieldValue = (key: string) => {
   return currentRecord.value ? currentRecord.value[key] : "";
+};
+
+// Форматирование времени перезвона
+const formatCallbackTime = (callbackTime: string) => {
+  try {
+    const date = new Date(callbackTime);
+    return date.toLocaleString("ru-RU", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  } catch {
+    return callbackTime;
+  }
 };
 
 // Загрузка списка тегов
@@ -304,6 +466,91 @@ const getTags = async () => {
   }
 };
 
+// Загрузка дефолтного шаблона комментария
+const getDefaultTemplate = async () => {
+  try {
+    console.log("=== ПОЛУЧЕНИЕ ШАБЛОНА КОММЕНТАРИЯ ===");
+
+    const response = await $fetch("/api/comment-templates/list");
+    console.log("Ответ от API:", response);
+
+    if (
+      response &&
+      response.status === "success" &&
+      response.templates &&
+      response.templates.length > 0
+    ) {
+      // Берем первый активный шаблон как дефолтный
+      defaultTemplate.value = response.templates[0];
+      console.log("Загружен шаблон комментария:", defaultTemplate.value);
+    } else {
+      console.log("Шаблоны комментариев не найдены");
+    }
+  } catch (error) {
+    console.error("Ошибка при загрузке шаблона комментария:", error);
+  }
+};
+
+// Инициализация Toast UI Editor
+const initCommentEditor = async () => {
+  console.log("=== ИНИЦИАЛИЗАЦИЯ TOAST UI EDITOR ===");
+
+  if (!commentEditorElement.value) {
+    console.error("DOM элемент для редактора не найден!");
+    return;
+  }
+
+  try {
+    // Динамический импорт Toast UI Editor
+    const EditorModule = await import("@toast-ui/editor");
+    const Editor = EditorModule.default || EditorModule;
+
+    // Импорт стилей
+    await import("@toast-ui/editor/dist/toastui-editor.css");
+    await import("@toast-ui/editor/dist/theme/toastui-editor-dark.css");
+
+    // Создание редактора
+    commentEditor = new Editor({
+      el: commentEditorElement.value,
+      height: "240px",
+      initialEditType: "wysiwyg",
+      previewStyle: "vertical",
+      placeholder: "Комментарий к клиенту...",
+      theme: "dark",
+      usageStatistics: false,
+      hideModeSwitch: true,
+      toolbarItems: [
+        ["bold", "italic"],
+        ["ul", "ol"],
+      ],
+    });
+
+    console.log("Toast UI Editor успешно создан!");
+
+    // Устанавливаем начальное содержимое
+    // ВАЖНО: Если есть существующий комментарий, НЕ перезаписываем его шаблоном
+    let initialContent = "";
+    if (commentText.value && commentText.value.trim() !== "") {
+      // Если есть существующий комментарий - используем его
+      initialContent = commentText.value;
+      console.log("Используем существующий комментарий:", initialContent);
+    } else if (defaultTemplate.value?.content) {
+      // Если комментария нет, но есть шаблон - используем шаблон
+      initialContent = defaultTemplate.value.content;
+      console.log("Используем шаблон комментария:", initialContent);
+    }
+
+    if (initialContent) {
+      (commentEditor as { setHTML: (content: string) => void }).setHTML(
+        initialContent
+      );
+      console.log("Установлено начальное содержимое в редактор");
+    }
+  } catch (error) {
+    console.error("Ошибка при инициализации Toast UI Editor:", error);
+  }
+};
+
 // Получить текущую запись
 const fetchRecord = async () => {
   // Проверяем актуальность аутентификации перед каждым запросом
@@ -324,7 +571,42 @@ const fetchRecord = async () => {
 
     if (response.success && "record" in response && response.record) {
       currentRecord.value = response.record;
-      commentText.value = response.record.description || "";
+
+      // Загружаем комментарий в текстовое поле
+      if (response.record.description) {
+        commentText.value = response.record.description;
+        console.log("Загружен существующий комментарий");
+
+        // Обновляем Toast UI Editor если он инициализирован
+        if (commentEditor) {
+          (commentEditor as { setHTML: (content: string) => void }).setHTML(
+            response.record.description
+          );
+        }
+      } else {
+        // Если комментария нет, вставляем шаблон
+        if (defaultTemplate.value?.content) {
+          commentText.value = defaultTemplate.value.content;
+          console.log("Вставлен шаблон комментария");
+
+          // Обновляем Toast UI Editor если он инициализирован
+          if (commentEditor) {
+            (commentEditor as { setHTML: (content: string) => void }).setHTML(
+              defaultTemplate.value.content
+            );
+          }
+        } else {
+          commentText.value = "";
+          console.log("Комментарий пустой");
+
+          // Очищаем Toast UI Editor если он инициализирован
+          if (commentEditor) {
+            (commentEditor as { setHTML: (content: string) => void }).setHTML(
+              ""
+            );
+          }
+        }
+      }
 
       toast.add({
         title: "Успешно",
@@ -375,13 +657,52 @@ const loadSpecificRecord = async (recordId: number) => {
 
     const response = (await $fetch(`/api/user/getRecordById`, {
       query: { id: recordId },
-    })) as { status: string; record?: Record; message?: string };
+    })) as { status: string; record?: CallRecord; message?: string };
 
     console.log("Ответ от API:", response);
 
     if (response.status === "success" && response.record) {
       currentRecord.value = response.record;
-      commentText.value = response.record.description || "";
+
+      // Загружаем комментарий или вставляем шаблон
+      if (
+        response.record.description &&
+        response.record.description.trim() !== ""
+      ) {
+        commentText.value = response.record.description;
+        console.log("Загружен существующий комментарий из перезвона");
+
+        // Обновляем Toast UI Editor если он инициализирован
+        if (commentEditor) {
+          (commentEditor as { setHTML: (content: string) => void }).setHTML(
+            response.record.description
+          );
+        }
+      } else {
+        // Если комментария нет, вставляем шаблон
+        if (defaultTemplate.value?.content) {
+          commentText.value = defaultTemplate.value.content;
+          console.log("Вставлен шаблон комментария в перезвон");
+
+          // Обновляем Toast UI Editor если он инициализирован
+          if (commentEditor) {
+            (commentEditor as { setHTML: (content: string) => void }).setHTML(
+              defaultTemplate.value.content
+            );
+          }
+        } else {
+          commentText.value = "";
+          console.log("Комментарий пустой, шаблон не найден");
+
+          // Очищаем Toast UI Editor если он инициализирован
+          if (commentEditor) {
+            (commentEditor as { setHTML: (content: string) => void }).setHTML(
+              ""
+            );
+          }
+        }
+      }
+
       isEditingComment.value = false;
 
       toast.add({
@@ -414,7 +735,7 @@ const loadSpecificRecord = async (recordId: number) => {
   }
 };
 
-// Выбор и назначение тега сразу без подтверждения
+// Выбор и назначение тега сразу без подтверждения + автосохранение комментария
 const selectTag = async (tag: Tag) => {
   // Проверяем актуальность аутентификации перед каждым запросом
   await auth.checkAuth();
@@ -424,12 +745,18 @@ const selectTag = async (tag: Tag) => {
   isUpdatingTag.value = true;
 
   try {
+    // Сохраняем комментарий перед назначением тега
+    const commentContent = commentEditor
+      ? (commentEditor as { getHTML: () => string }).getHTML()
+      : commentText.value;
+
     // Назначаем тег записи
     const response = await $fetch("/api/records/setTag", {
       method: "POST",
       body: {
         recordId: currentRecord.value.id,
         tagId: tag.id,
+        comment: commentContent, // Передаем комментарий вместе с тегом
       },
     });
 
@@ -442,9 +769,13 @@ const selectTag = async (tag: Tag) => {
         color: tag.color,
       };
 
+      // Обновляем комментарий
+      currentRecord.value.description = commentContent;
+      commentText.value = commentContent;
+
       toast.add({
         title: "Успешно",
-        description: "Тег успешно назначен",
+        description: "Тег и комментарий сохранены",
         color: "success",
       });
 
@@ -459,12 +790,10 @@ const selectTag = async (tag: Tag) => {
   } catch (error) {
     console.error("Ошибка при назначении тега:", error);
 
+    const errorData = error as { data?: { code?: string }; message?: string };
+
     // Проверка на ошибку USER_NOT_EXISTS
-    if (
-      error.data &&
-      (error.data.code === "USER_NOT_EXISTS" ||
-        error.data.data?.errorCode === "USER_NOT_EXISTS")
-    ) {
+    if (errorData.data && errorData.data.code === "USER_NOT_EXISTS") {
       auth.setErrorCode("USER_NOT_EXISTS");
       navigateTo("/?error=USER_NOT_EXISTS");
       return;
@@ -472,7 +801,7 @@ const selectTag = async (tag: Tag) => {
 
     toast.add({
       title: "Ошибка",
-      description: error.message || "Не удалось назначить тег",
+      description: errorData.message || "Не удалось назначить тег",
       color: "error",
     });
   } finally {
@@ -504,7 +833,7 @@ const setCallback = async () => {
         recordId: currentRecord.value.id,
         tagId: callbackTag.id,
         callbackTime: callbackDateTime.value,
-        comment: callbackComment.value || null,
+        callbackComment: callbackComment.value || null, // Отдельное поле для комментария перезвона
       },
     });
 
@@ -512,9 +841,8 @@ const setCallback = async () => {
       // Обновляем текущую запись
       currentRecord.value.tag = "ПЕРЕЗВОН";
       currentRecord.value.callback_time = callbackDateTime.value;
-      if (callbackComment.value) {
-        currentRecord.value.description = callbackComment.value;
-      }
+
+      // НЕ перезаписываем основной комментарий - callbackComment сохраняется отдельно
 
       toast.add({
         title: "Успешно",
@@ -558,78 +886,50 @@ const setCallback = async () => {
   }
 };
 
-// Редактирование комментария
-const cancelEditComment = () => {
-  editingComment.value = false;
-  commentText.value = currentRecord.value?.description || "";
-};
-
-// Сохранение комментария
-const saveComment = async () => {
-  // Проверяем актуальность аутентификации перед каждым запросом
-  await auth.checkAuth();
-
-  if (!currentRecord.value || !auth.isAuthenticated) return;
-
-  isSavingComment.value = true;
+// Копирование номера телефона
+const copyPhone = async () => {
+  if (!formattedPhone.value) return;
 
   try {
-    const response = await $fetch("/api/user/updateComment", {
-      method: "POST",
-      body: {
-        recordId: currentRecord.value.id,
-        comment: commentText.value,
-      },
+    await navigator.clipboard.writeText(formattedPhone.value);
+    toast.add({
+      title: "Успешно",
+      description: "Номер телефона скопирован",
+      color: "success",
     });
-
-    if (response && response.status === "success") {
-      // Обновляем локальное значение
-      currentRecord.value.description = commentText.value;
-      editingComment.value = false;
-
-      toast.add({
-        title: "Успешно",
-        description: "Комментарий сохранен",
-        color: "success",
-      });
-    } else {
-      throw new Error(response?.message || "Не удалось сохранить комментарий");
-    }
-  } catch (error) {
-    console.error("Ошибка при сохранении комментария:", error);
-
-    // Проверка на ошибку USER_NOT_EXISTS
-    if (
-      error.data &&
-      (error.data.code === "USER_NOT_EXISTS" ||
-        error.data.data?.errorCode === "USER_NOT_EXISTS")
-    ) {
-      auth.setErrorCode("USER_NOT_EXISTS");
-      navigateTo("/?error=USER_NOT_EXISTS");
-      return;
-    }
-
+  } catch {
     toast.add({
       title: "Ошибка",
-      description: error.message || "Не удалось сохранить комментарий",
+      description: "Не удалось скопировать номер",
       color: "error",
     });
-  } finally {
-    isSavingComment.value = false;
   }
 };
 
 // Инициализация компонента
 onMounted(async () => {
-  // Сначала проверяем аутентификацию
+  console.log("=== onMounted НАЧАЛО ===");
+
+  // Проверяем аутентификацию
   await auth.checkAuth();
 
-  // Если пользователь не существует, middleware автоматически перенаправит на страницу входа
-  // Если все в порядке, продолжаем инициализацию
   if (auth.isAuthenticated) {
-    getTags();
-    // Автоматически загружаем запись при монтировании
-    fetchRecord();
+    console.log("Пользователь аутентифицирован, начинаем инициализацию");
+
+    // Загружаем теги и шаблон
+    await getTags();
+    await getDefaultTemplate();
+
+    console.log("Загружаем первую запись");
+    await fetchRecord();
+
+    // Ждем готовности DOM и инициализируем редактор
+    await nextTick();
+    setTimeout(async () => {
+      await initCommentEditor();
+    }, 500);
+
+    console.log("=== onMounted ЗАВЕРШЕН ===");
   }
 
   // Обработчик для загрузки конкретной записи
@@ -647,10 +947,36 @@ onMounted(async () => {
 });
 
 onUnmounted(() => {
-  // Правильно очищаем обработчик события
+  // Очищаем обработчик события
   if (loadRecordHandler.value) {
     window.removeEventListener("loadRecord", loadRecordHandler.value);
     loadRecordHandler.value = null;
   }
 });
 </script>
+
+<style scoped>
+/* Стили для простого текстового редактора */
+.comment-editor-wrapper {
+  width: 100%;
+  height: 280px;
+  min-height: 280px;
+}
+
+.comment-editor-wrapper textarea {
+  background-color: rgb(17 24 39) !important;
+  color: white !important;
+  border: 1px solid rgb(75 85 99) !important;
+  border-radius: 0.375rem !important;
+  padding: 16px !important;
+  font-size: 14px !important;
+  line-height: 1.5 !important;
+  resize: none !important;
+  outline: none !important;
+}
+
+.comment-editor-wrapper textarea:focus {
+  border-color: rgb(59 130 246) !important;
+  box-shadow: 0 0 0 1px rgb(59 130 246) !important;
+}
+</style>

@@ -1,9 +1,7 @@
 import { db } from "../..";
-import { records } from "../../schema";
-import { sql } from "drizzle-orm";
+import { databases } from "../../schema";
 import { verifyAuth } from "../../utils/jwt";
 
-// Этот API будет возвращать статистику по звонкам
 export default defineEventHandler(async (event) => {
   try {
     // Проверяем авторизацию пользователя
@@ -26,25 +24,23 @@ export default defineEventHandler(async (event) => {
       };
     }
 
-    // Получаем статистику звонков по тегам
-    const callStats = await db
-      .select({
-        status: records.tag,
-        count: sql<number>`count(*)`,
-      })
-      .from(records)
-      .groupBy(records.tag)
-      .orderBy(records.tag);
+    // Получаем список всех баз данных
+    const databasesList = await db.select().from(databases);
 
     return {
       status: "success",
-      data: callStats,
+      data: databasesList.map((database) => ({
+        id: database.id,
+        name: database.name,
+        created_at: database.created_at,
+      })),
     };
   } catch (error) {
-    console.error("Ошибка при получении статистики звонков:", error);
+    console.error("Ошибка получения списка баз данных:", error);
     return {
       status: "error",
-      message: "Ошибка при получении статистики звонков",
+      message: "Ошибка получения списка баз данных",
+      data: null,
     };
   }
 });

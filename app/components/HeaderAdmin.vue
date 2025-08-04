@@ -1,6 +1,8 @@
 <template>
-  <header class="bg-neutral-800 p-2 flex flex-row gap-6 items-center justify-between">
-    <div class="flex flex-row gap-6 items-center ">
+  <header
+    class="bg-neutral-800 p-2 flex flex-row gap-6 items-center justify-between"
+  >
+    <div class="flex flex-row gap-6 items-center">
       <NuxtImg
         src="/logocrm.png"
         alt="Logo"
@@ -13,7 +15,7 @@
     <div>
       <UNavigationMenu color="primary" :items="items" class="w-full" />
     </div>
-   <BtnLogout/>
+    <BtnLogout />
   </header>
 </template>
 
@@ -23,23 +25,9 @@ import type { NavigationMenuItem } from "@nuxt/ui";
 const items = ref<NavigationMenuItem[][]>([
   [
     {
-      label: "Стастистика",
+      label: "Статистика",
       icon: "i-lucide-bar-chart-3",
       to: "/admin",
-      children: [
-        {
-          label: "Общая статистика",
-          description: "Просмотр общей статистики",
-          icon: "i-lucide-pie-chart",
-          to: "/admin",
-        },
-        {
-          label: "Статистика по пользователям",
-          description: "Просмотр статистики по пользователям",
-          icon: "i-lucide-users",
-          to: "/admin/users/statistics",
-        },
-      ],
     },
     {
       label: "Базы данных",
@@ -68,16 +56,21 @@ const items = ref<NavigationMenuItem[][]>([
     {
       label: "Настройки",
       icon: "lucide:settings",
-      children:[
+      children: [
         {
-      label: "Управление тегами",
-      icon: "lucide:bookmark",
-      description:'Тут можно удалить,изменить редактировать теги',
-      to: "/admin/set_tags",
+          label: "Управление тегами",
+          icon: "lucide:bookmark",
+          description: "Тут можно удалить,изменить редактировать теги",
+          to: "/admin/set_tags",
+        },
+        {
+          label: "Глобальные скрипты",
+          icon: "i-heroicons-globe-alt",
+          description: "Создание скриптов для всех пользователей",
+          to: "/admin/scripts",
+        },
+      ],
     },
-    
-      ]
-    }
     // {
     //   label: 'Документы',
     //   icon: 'i-lucide-file-text',

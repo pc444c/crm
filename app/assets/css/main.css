@@ -3,6 +3,11 @@
 
 @import "tailwindcss";
 @import "@nuxt/ui";
+
+/* Toast UI Editor стили */
+@import "@toast-ui/editor/dist/toastui-editor.css";
+@import "@toast-ui/editor/dist/theme/toastui-editor-dark.css";
+
 body {
   font-family: "Inter", "Roboto", system-ui, -apple-system, BlinkMacSystemFont,
     sans-serif;

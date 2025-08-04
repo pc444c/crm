@@ -1,0 +1,1 @@
+ALTER TABLE "records" ADD COLUMN "callback_comment" text;

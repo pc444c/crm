@@ -22,6 +22,7 @@ const authRoutes = [
   "/api/user/",
   "/api/records/",
   "/api/tags/",
+  "/api/comment-templates/",
   "/api/changepassword",
   "/api/basesinfo",
   "/api/dbtest",
@@ -32,6 +33,13 @@ const publicRoutes = ["/api/login", "/api/verify-auth", "/api/logout"];
 
 export default defineEventHandler(async (event) => {
   const path = getRequestURL(event).pathname;
+
+  // Добавим логирование для админских маршрутов
+  if (path.startsWith("/api/admin/")) {
+    console.log("=== Auth Middleware ===");
+    console.log("Path:", path);
+    console.log("Cookies:", parseCookies(event));
+  }
 
   // Пропускаем открытые маршруты
   if (publicRoutes.some((route) => path.startsWith(route))) {
