@@ -44,12 +44,140 @@ export default defineEventHandler(async (event) => {
     // Получаем список всех тегов
     const allTags = await db.select().from(tags).execute();
 
+    // ВАЖНО: СНАЧАЛА проверяем уже назначенные пользователю записи "used"
+    // БЕЗ ограничения по командам (чтобы он мог завершить работу с ними)
+    console.log(
+      `Поиск уже назначенных записей "used" для пользователя ${userId}`
+    );
+
+    const usedRecordResult = await db
+      .select()
+      .from(records)
+      .where(
+        and(
+          eq(records.tag, "used"),
+          eq(records.user_id, userId) // Только записи этого пользователя
+          // НЕ проверяем принадлежность к командам для уже назначенных записей
+        )
+      )
+      .orderBy(asc(records.used_at))
+      .limit(1)
+      .execute();
+
+    console.log(
+      `Найдено уже назначенных записей "used":`,
+      usedRecordResult.length
+    );
+
+    // Если есть уже назначенная запись, возвращаем её (игнорируя команды)
+    if (usedRecordResult.length > 0) {
+      const record = usedRecordResult[0];
+      console.log(
+        `Возвращаем уже назначенную запись ${record.id} для пользователя ${userId}`
+      );
+
+      // Находим соответствующий тег
+      let tagInfo = null;
+      if (record.tag) {
+        const tagMatch = allTags.find((t) => t.name === record.tag);
+        if (tagMatch) {
+          tagInfo = {
+            id: tagMatch.id,
+            name: tagMatch.name,
+            color: tagMatch.color,
+          };
+        }
+      }
+
+      return {
+        success: true,
+        record: {
+          ...record,
+          tagInfo,
+          tagId: tagInfo ? tagInfo.id : null,
+        },
+      };
+    }
+
+    // Если нет уже назначенных записей, то для новых записей проверяем права через команды
+    console.log(
+      `Нет назначенных записей для пользователя ${userId}, проверяем доступ к новым записям`
+    );
+
     // Проверяем, является ли пользователь администратором
     if (user.role === "admin") {
-      // Для админов доступны все записи (старая логика)
-    } else {
-      // Для обычных пользователей проверяем доступ через команды
+      console.log(
+        `Пользователь ${userId} является админом - доступ ко всем записям`
+      );
 
+      // Для админов ищем любые новые записи "no used"
+      const adminRecordResult = await db
+        .select()
+        .from(records)
+        .where(and(eq(records.tag, "no used"), isNull(records.user_id)))
+        .orderBy(asc(records.created_at))
+        .limit(1)
+        .execute();
+
+      console.log(
+        `Найдено новых записей "no used" для админа:`,
+        adminRecordResult.length
+      );
+
+      const record = adminRecordResult[0];
+
+      if (!record) {
+        return {
+          success: false,
+          error: "Нет доступных записей",
+        };
+      }
+
+      // Назначаем запись админу
+      if (!skipMarking) {
+        await db
+          .update(records)
+          .set({
+            user_id: userId,
+            tag: "used",
+            used_at: new Date(),
+            status_updated_at: new Date(),
+          })
+          .where(eq(records.id, record.id))
+          .execute();
+
+        // Обновляем локальный объект записи
+        record.tag = "used";
+        record.user_id = userId;
+      }
+
+      // Находим соответствующий тег
+      let tagInfo = null;
+      if (record.tag) {
+        const tagMatch = allTags.find((t) => t.name === record.tag);
+        if (tagMatch) {
+          tagInfo = {
+            id: tagMatch.id,
+            name: tagMatch.name,
+            color: tagMatch.color,
+          };
+        }
+      }
+
+      return {
+        success: true,
+        record: {
+          ...record,
+          tagInfo,
+          tagId: tagInfo ? tagInfo.id : null,
+        },
+      };
+    } else {
+      console.log(
+        `Пользователь ${userId} обычный - проверяем доступ через команды`
+      );
+
+      // Для обычных пользователей проверяем доступ через команды только для новых записей
       // Получаем команды пользователя
       const userTeamsResult = await db
         .select({ team_id: userTeams.team_id })
@@ -57,7 +185,8 @@ export default defineEventHandler(async (event) => {
         .where(eq(userTeams.user_id, userId));
 
       if (userTeamsResult.length === 0) {
-        // Пользователь не состоит ни в одной команде - нет доступа к записям
+        // Пользователь не состоит ни в одной команде - нет доступа к новым записям
+        console.log(`Пользователь ${userId} не состоит ни в одной команде`);
         return {
           success: false,
           error:
@@ -66,6 +195,7 @@ export default defineEventHandler(async (event) => {
       }
 
       const teamIds = userTeamsResult.map((result) => result.team_id);
+      console.log(`Пользователь ${userId} состоит в командах:`, teamIds);
 
       // Получаем базы данных, к которым есть доступ через команды
       const accessibleDatabasesResult = await db
@@ -86,38 +216,29 @@ export default defineEventHandler(async (event) => {
         (result) => result.database_id
       );
 
-      // Теперь ищем записи только из доступных баз данных
-      // Сначала ищем записи со статусом "used" (приоритет) из доступных баз
-      let recordResult = await db
+      // Ищем новые записи "no used" только из доступных через команды баз данных
+      console.log(
+        `Поиск новых записей "no used" в доступных базах данных для пользователя ${userId}`
+      );
+
+      const recordResult = await db
         .select()
         .from(records)
         .where(
           and(
-            eq(records.tag, "used"),
-            eq(records.user_id, userId), // Только записи этого пользователя
+            eq(records.tag, "no used"),
+            isNull(records.user_id),
             inArray(records.database_id, accessibleDatabaseIds) // Только из доступных баз
           )
         )
-        .orderBy(asc(records.used_at))
+        .orderBy(asc(records.created_at))
         .limit(1)
         .execute();
 
-      // Если нет записей "used" для этого пользователя, ищем новые записи "no used" из доступных баз
-      if (recordResult.length === 0) {
-        recordResult = await db
-          .select()
-          .from(records)
-          .where(
-            and(
-              eq(records.tag, "no used"),
-              isNull(records.user_id),
-              inArray(records.database_id, accessibleDatabaseIds) // Только из доступных баз
-            )
-          )
-          .orderBy(asc(records.created_at))
-          .limit(1)
-          .execute();
-      }
+      console.log(
+        `Найдено новых записей "no used" в доступных базах:`,
+        recordResult.length
+      );
 
       const record = recordResult[0];
 
@@ -171,84 +292,6 @@ export default defineEventHandler(async (event) => {
         },
       };
     }
-
-    // Старая логика для администраторов (без ограничений по командам)
-
-    // Сначала ищем записи со статусом "used" (приоритет)
-    let recordResult = await db
-      .select()
-      .from(records)
-      .where(
-        and(
-          eq(records.tag, "used"),
-          eq(records.user_id, userId) // Только записи этого пользователя
-        )
-      )
-      .orderBy(asc(records.used_at))
-      .limit(1)
-      .execute();
-
-    // Если нет записей "used" для этого пользователя, ищем новые записи "no used"
-    if (recordResult.length === 0) {
-      recordResult = await db
-        .select()
-        .from(records)
-        .where(and(eq(records.tag, "no used"), isNull(records.user_id)))
-        .orderBy(asc(records.created_at))
-        .limit(1)
-        .execute();
-    }
-
-    const record = recordResult[0];
-
-    if (!record) {
-      return {
-        success: false,
-        error: "Нет доступных записей",
-      };
-    }
-
-    // Если запись не назначена пользователю и не надо пропускать маркировку
-    if (!record.user_id && !skipMarking) {
-      // Обновляем запись - назначаем пользователя, устанавливаем статус "used" и время использования
-      await db
-        .update(records)
-        .set({
-          user_id: userId,
-          tag: "used", // Меняем статус с "no used" на "used"
-          used_at: new Date(),
-          status_updated_at: new Date(),
-        })
-        .where(eq(records.id, record.id))
-        .execute();
-
-      // Обновляем локальный объект записи
-      record.tag = "used";
-      record.user_id = userId;
-    }
-
-    // Находим соответствующий тег, если он есть
-    let tagInfo = null;
-    if (record.tag) {
-      const tagMatch = allTags.find((t) => t.name === record.tag);
-      if (tagMatch) {
-        tagInfo = {
-          id: tagMatch.id,
-          name: tagMatch.name,
-          color: tagMatch.color,
-        };
-      }
-    }
-
-    // Возвращаем найденную запись с дополнительной информацией о теге
-    return {
-      success: true,
-      record: {
-        ...record,
-        tagInfo,
-        tagId: tagInfo ? tagInfo.id : null,
-      },
-    };
   } catch (error) {
     console.error("Ошибка при получении записи:", error);
     return {

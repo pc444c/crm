@@ -47,7 +47,7 @@
       <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
         <UCard>
           <div class="flex items-center gap-3">
-            <div class="p-2 bg-blue-500/20 rounded-lg">
+            <div class="p-2 flex justify-center items-center bg-blue-500/20 rounded-lg">
               <UIcon name="i-heroicons-users" class="text-blue-400 text-xl" />
             </div>
             <div>
@@ -59,7 +59,7 @@
 
         <UCard>
           <div class="flex items-center gap-3">
-            <div class="p-2 bg-green-500/20 rounded-lg">
+            <div class="p-2 flex justify-center items-center bg-green-500/20 rounded-lg">
               <UIcon
                 name="i-heroicons-circle-stack"
                 class="text-green-400 text-xl"
@@ -75,8 +75,8 @@
         </UCard>
 
         <UCard>
-          <div class="flex items-center gap-3">
-            <div class="p-2 bg-purple-500/20 rounded-lg">
+          <div class="flex items-center  gap-3">
+            <div class="p-2 flex justify-center items-center bg-purple-500/20 rounded-lg">
               <UIcon
                 name="i-heroicons-user-plus"
                 class="text-purple-400 text-xl"
@@ -98,7 +98,7 @@
           <template #header>
             <div class="flex items-center justify-between">
               <div class="flex items-center gap-3">
-                <div class="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
+                <div class="p-2 flex justify-center items-center bg-blue-100 dark:bg-blue-900/30 rounded-lg">
                   <UIcon
                     name="i-heroicons-users"
                     class="text-blue-600 dark:text-blue-400 text-xl"
@@ -213,7 +213,7 @@
           <template #header>
             <div class="flex items-center justify-between">
               <div class="flex items-center gap-3">
-                <div class="p-2 bg-purple-100 dark:bg-purple-900/30 rounded-lg">
+                <div class="p-2 bg-purple-100 flex justify-center items-center dark:bg-purple-900/30 rounded-lg">
                   <UIcon
                     name="i-heroicons-user-plus"
                     class="text-purple-600 dark:text-purple-400 text-xl"

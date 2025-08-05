@@ -63,45 +63,60 @@ export default defineEventHandler(async (event) => {
 
     // Проверяем доступ к базе данных через команды (если пользователь не админ)
     if (userData.role !== "admin") {
-      // Получаем команды пользователя
-      const userTeamsResult = await db
-        .select({ team_id: userTeams.team_id })
-        .from(userTeams)
-        .where(eq(userTeams.user_id, userData.id));
+      // ВАЖНО: Если запись уже назначена текущему пользователю,
+      // разрешаем ему завершить работу с ней (отправить тег),
+      // даже если его удалили из команды
+      if (currentRecord.user_id === userData.id) {
+        console.log(
+          `Разрешение завершить работу с записью ${recordId} для пользователя ${userData.id} (запись уже назначена ему)`
+        );
+        // Пропускаем проверку команд и разрешаем завершить работу
+      } else {
+        // Для новых записей проверяем доступ через команды
+        console.log(
+          `Проверка доступа через команды для записи ${recordId} и пользователя ${userData.id}`
+        );
 
-      if (userTeamsResult.length === 0) {
-        return {
-          status: "error",
-          message:
-            "У вас нет доступа к базам данных. Обратитесь к администратору.",
-        };
-      }
+        // Получаем команды пользователя
+        const userTeamsResult = await db
+          .select({ team_id: userTeams.team_id })
+          .from(userTeams)
+          .where(eq(userTeams.user_id, userData.id));
 
-      const teamIds = userTeamsResult.map((result) => result.team_id);
+        if (userTeamsResult.length === 0) {
+          return {
+            status: "error",
+            message:
+              "У вас нет доступа к базам данных. Обратитесь к администратору.",
+          };
+        }
 
-      // Получаем базы данных, к которым есть доступ через команды
-      const accessibleDatabasesResult = await db
-        .select({ database_id: teamDatabases.database_id })
-        .from(teamDatabases)
-        .where(inArray(teamDatabases.team_id, teamIds));
+        const teamIds = userTeamsResult.map((result) => result.team_id);
 
-      if (accessibleDatabasesResult.length === 0) {
-        return {
-          status: "error",
-          message: "У ваших команд нет доступа к базам данных.",
-        };
-      }
+        // Получаем базы данных, к которым есть доступ через команды
+        const accessibleDatabasesResult = await db
+          .select({ database_id: teamDatabases.database_id })
+          .from(teamDatabases)
+          .where(inArray(teamDatabases.team_id, teamIds));
 
-      const accessibleDatabaseIds = accessibleDatabasesResult.map(
-        (result) => result.database_id
-      );
+        if (accessibleDatabasesResult.length === 0) {
+          return {
+            status: "error",
+            message: "У ваших команд нет доступа к базам данных.",
+          };
+        }
 
-      // Проверяем, что запись принадлежит к доступной базе данных
-      if (!accessibleDatabaseIds.includes(currentRecord.database_id)) {
-        return {
-          status: "error",
-          message: "У вас нет доступа к этой базе данных.",
-        };
+        const accessibleDatabaseIds = accessibleDatabasesResult.map(
+          (result) => result.database_id
+        );
+
+        // Проверяем, что запись принадлежит к доступной базе данных
+        if (!accessibleDatabaseIds.includes(currentRecord.database_id)) {
+          return {
+            status: "error",
+            message: "У вас нет доступа к этой базе данных.",
+          };
+        }
       }
     }
     // const currentUserId = currentRecord[0].user_id;
