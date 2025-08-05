@@ -57,6 +57,8 @@ export const records = pgTable("records", {
   callback_time: timestamp("callback_time", { precision: 3 }),
   // поле для комментария к перезвону
   callback_comment: text("callback_comment"),
+  // поле для сохранения команды, которая обработала запись (для статистики)
+  team_id: integer("team_id").references(() => teams.id),
   // поле для хранения статуса
 });
 // tags.ts

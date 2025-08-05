@@ -27,27 +27,65 @@ export default defineEventHandler(async (event) => {
 
   const newDbId = newDb.id;
 
-  if (dbdates && dbdates.length > 0) {
-    const phones = dbdates
-      .map((record: any) => record.phone)
-      .filter((p: any) => p != null);
+  // Инициализируем переменные для статистики
+  let duplicateRecords: any[] = [];
+  let recordsToInsert: any[] = [];
 
-    let existingPhones: any[] = [];
+  if (dbdates && dbdates.length > 0) {
+    // Получаем только записи с телефонами для проверки дубликатов
+    const recordsWithPhones = dbdates.filter(
+      (record: any) => record.phone && String(record.phone).trim() !== ""
+    );
+    const phones = recordsWithPhones.map((record: any) =>
+      String(record.phone).trim()
+    );
+
+    let existingPhones: string[] = [];
     if (phones.length > 0) {
+      // Проверяем дубликаты во всех БД
       const existingRecords = await db
         .select({ phone: records.phone })
         .from(records)
-        .where(eq(records.database_id, newDbId))
-        .where(inArray(records.phone, phones)); // ✅ ВАЖНО: тут inArray
+        .where(inArray(records.phone, phones));
 
-      existingPhones = existingRecords.map((r: any) => r.phone);
+      existingPhones = existingRecords.map((r: any) => String(r.phone));
     }
 
-    const uniqueRecords = dbdates.filter(
-      (record: any) => !existingPhones.includes(record.phone)
-    );
+    // Разделяем записи на уникальные и дубликаты
+    const uniqueRecords = dbdates.filter((record: any) => {
+      // Если нет телефона - считаем уникальной
+      if (!record.phone || String(record.phone).trim() === "") {
+        return true;
+      }
+      // Если есть телефон - проверяем, есть ли он в существующих
+      return !existingPhones.includes(String(record.phone).trim());
+    });
 
-    const recordsToInsert = uniqueRecords.map((record: any) => ({
+    duplicateRecords = dbdates.filter((record: any) => {
+      // Только записи с телефонами могут быть дубликатами
+      if (!record.phone || String(record.phone).trim() === "") {
+        return false;
+      }
+      return existingPhones.includes(String(record.phone).trim());
+    });
+
+    // Если все записи с телефонами являются дубликатами и нет записей без телефонов
+    if (uniqueRecords.length === 0) {
+      // Удаляем созданную БД, так как нечего в неё добавлять
+      await db.delete(databases).where(eq(databases.id, newDbId));
+
+      return {
+        status: "error",
+        message: `Все записи (${duplicateRecords.length}) уже существуют в базе данных. База данных не создана.`,
+        statistics: {
+          inserted: 0,
+          duplicates: duplicateRecords.length,
+          total: dbdates.length,
+        },
+      };
+    }
+
+    recordsToInsert = uniqueRecords.map((record: any) => ({
       database_id: newDbId,
       title: record.title ?? null,
       number: record.number ?? null,
@@ -68,14 +106,39 @@ export default defineEventHandler(async (event) => {
     if (recordsToInsert.length > 0) {
       await db.insert(records).values(recordsToInsert);
     }
+
+    return {
+      status: "success",
+      message: `База данных успешно создана! Добавлено записей: ${
+        recordsToInsert.length
+      }${
+        duplicateRecords.length > 0
+          ? `, дубликатов пропущено: ${duplicateRecords.length}`
+          : ""
+      }`,
+      database: {
+        id: newDbId,
+        name: dbname,
+      },
+      statistics: {
+        inserted: recordsToInsert.length,
+        duplicates: duplicateRecords.length,
+        total: dbdates.length,
+      },
+    };
   }
 
   return {
     status: "success",
-    message: "База данных успешно создана",
+    message: "База данных создана, но записи не добавлены!",
     database: {
       id: newDbId,
       name: dbname,
+    },
+    statistics: {
+      inserted: 0,
+      duplicates: 0,
+      total: 0,
     },
   };
 });

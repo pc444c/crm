@@ -62,6 +62,8 @@ export default defineEventHandler(async (event) => {
     const currentRecord = recordResult[0];
 
     // Проверяем доступ к базе данных через команды (если пользователь не админ)
+    let userTeamId = null; // ID команды для сохранения в записи
+
     if (userData.role !== "admin") {
       // ВАЖНО: Если запись уже назначена текущему пользователю,
       // разрешаем ему завершить работу с ней (отправить тег),
@@ -70,6 +72,17 @@ export default defineEventHandler(async (event) => {
         console.log(
           `Разрешение завершить работу с записью ${recordId} для пользователя ${userData.id} (запись уже назначена ему)`
         );
+
+        // Получаем команду пользователя для статистики (может быть null если его удалили)
+        const userTeamsResult = await db
+          .select({ team_id: userTeams.team_id })
+          .from(userTeams)
+          .where(eq(userTeams.user_id, userData.id))
+          .limit(1);
+
+        if (userTeamsResult.length > 0) {
+          userTeamId = userTeamsResult[0].team_id;
+        }
         // Пропускаем проверку команд и разрешаем завершить работу
       } else {
         // Для новых записей проверяем доступ через команды
@@ -110,6 +123,11 @@ export default defineEventHandler(async (event) => {
           (result) => result.database_id
         );
 
+        // Сохраняем ID первой команды пользователя для статистики
+        if (teamIds.length > 0) {
+          userTeamId = teamIds[0];
+        }
+
         // Проверяем, что запись принадлежит к доступной базе данных
         if (!accessibleDatabaseIds.includes(currentRecord.database_id)) {
           return {
@@ -121,11 +139,12 @@ export default defineEventHandler(async (event) => {
     }
     // const currentUserId = currentRecord[0].user_id;
 
-    // Обновляем запись с новым тегом, комментарием и сохраняем ID пользователя, который его обработал
+    // Обновляем запись с новым тегом, комментарием и сохраняем ID пользователя и команды
     const updateData: Record<string, unknown> = {
       tag: tagName,
       status_updated_at: new Date(),
       user_id: userData.id, // Сохраняем ID пользователя, который назначил тег
+      team_id: userTeamId, // Сохраняем ID команды для статистики
     };
 
     // Если комментарий передан, сохраняем его
