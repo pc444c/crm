@@ -114,23 +114,12 @@
           @click="navigateToTeam(team.id)"
         >
           <div class="flex flex-col h-full">
-            <div class="flex items-start justify-between mb-3">
-              <div class="flex items-center gap-2">
-                <UIcon
-                  name="i-heroicons-user-group"
-                  class="text-primary-500 text-xl"
-                />
-                <h3 class="font-semibold text-lg truncate">{{ team.name }}</h3>
-              </div>
-              <UDropdown :items="getTeamActions(team)" class="flex-shrink-0">
-                <UButton
-                  icon="i-heroicons-ellipsis-vertical"
-                  size="xs"
-                  color="neutral"
-                  variant="ghost"
-                  @click.stop
-                />
-              </UDropdown>
+            <div class="flex items-center gap-2 mb-3">
+              <UIcon
+                name="i-heroicons-user-group"
+                class="text-primary-500 text-xl"
+              />
+              <h3 class="font-semibold text-lg truncate">{{ team.name }}</h3>
             </div>
 
             <p
@@ -340,47 +329,6 @@ const filteredTeams = computed(() => {
 // Методы
 const navigateToTeam = (teamId: number) => {
   navigateTo(`/admin/teams/${teamId}`);
-};
-
-const getTeamActions = (team: Team) => [
-  [
-    {
-      label: "Управление",
-      icon: "i-heroicons-cog-6-tooth",
-      click: () => navigateToTeam(team.id),
-    },
-  ],
-  [
-    {
-      label: "Удалить",
-      icon: "i-heroicons-trash",
-      click: () => deleteTeam(team.id),
-    },
-  ],
-];
-
-const deleteTeam = async (teamId: number) => {
-  try {
-    const response = await $fetch(`/api/admin/teams/${teamId}`, {
-      method: "DELETE",
-    });
-
-    if (response && response.status === "success") {
-      teams.value = teams.value.filter((team) => team.id !== teamId);
-      toast.add({
-        title: "Успешно",
-        description: "Команда удалена",
-        color: "success",
-      });
-    }
-  } catch (error) {
-    console.error("Ошибка при удалении команды:", error);
-    toast.add({
-      title: "Ошибка",
-      description: "Не удалось удалить команду",
-      color: "error",
-    });
-  }
 };
 
 const loadTeams = async () => {

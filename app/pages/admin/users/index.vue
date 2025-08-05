@@ -1,25 +1,42 @@
 <template>
-  <div class="flex flex-col gap-4">
-    <UCard>
-      <u-separator
-        color="primary"
-        size="xl"
-        label="Добавить пользователя (холодку)"
-        class="mb-4"
-      />
-      <form class="flex flex-row items-end gap-4">
-        <UFormField label="Логин" class="w-1/5">
+  <div class="flex flex-col gap-6">
+    <UCard
+      class="shadow-lg border-0 bg-gradient-to-br from-white to-gray-50/50 dark:from-gray-900 dark:to-gray-800/50"
+    >
+      <div class="flex items-center gap-3 mb-6">
+        <div class="p-3 bg-primary-100 dark:bg-primary-900/30 rounded-xl">
+          <Icon
+            name="i-lucide-user-plus"
+            class="w-6 h-6 text-primary-600 dark:text-primary-400"
+          />
+        </div>
+        <div>
+          <h2 class="text-xl font-bold text-gray-900 dark:text-white">
+            Добавить пользователя
+          </h2>
+          <p class="text-sm text-gray-600 dark:text-gray-400">
+            Создание нового пользователя (холодки) в системе
+          </p>
+        </div>
+      </div>
+
+      <form
+        class="flex flex-col lg:flex-row items-end gap-4"
+        @submit.prevent="addUser"
+      >
+        <UFormField label="Логин" class="flex-1 lg:w-1/5">
           <UInput
             v-model="userInput.login"
             :rules="[(v) => !!v || 'Логин обязателен']"
             :autofocus="true"
             size="xl"
-            placeholder="Введи логин"
+            placeholder="Введите логин пользователя"
             type="text"
             class="w-full"
+            :disabled="isAddingUser"
           />
         </UFormField>
-        <UFormField label="Пароль" class="w-1/5">
+        <UFormField label="Пароль" class="flex-1 lg:w-1/5">
           <UInput
             v-model="userInput.password"
             :rules="[(v) => !!v || 'Пароль обязателен']"
@@ -27,27 +44,43 @@
             placeholder="Введите пароль"
             type="password"
             class="w-full"
+            :disabled="isAddingUser"
           />
         </UFormField>
-        <UFormField label="Команда (необязательно)" class="w-1/5">
+        <UFormField label="Команда (необязательно)" class="flex-1 lg:w-1/5">
           <USelect
             v-model="userInput.teamId"
-            :options="teamsOptions"
+            :items="teamsOptions"
             placeholder="Выберите команду"
-            option-attribute="label"
-            value-attribute="value"
+            :loading="isLoadingTeams"
+            size="xl"
+            value-key="value"
+            :disabled="isAddingUser"
           />
         </UFormField>
-        <UButton
-          icon="i-lucide-rocket"
-          size="md"
-          color="primary"
-          @click.prevent="addUser"
-          :disabled="!userInput.login || !userInput.password"
-          variant="solid"
-          class="w-1/5 flex items-center justify-center"
-          >Добавить холодку</UButton
-        >
+        <div class="flex-1 lg:w-1/5 flex flex-col justify-end">
+          <UButton
+            type="submit"
+            size="xl"
+            color="primary"
+            variant="solid"
+            :disabled="!userInput.login || !userInput.password || isAddingUser"
+            :loading="isAddingUser"
+            class="w-full justify-center font-semibold shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] bg-gradient-to-r from-primary-500 to-primary-600 hover:from-primary-600 hover:to-primary-700"
+          >
+            <template v-if="!isAddingUser">
+              <Icon name="i-lucide-user-plus" class="w-5 h-5 mr-2" />
+              Добавить холодку
+            </template>
+            <template v-else>
+              <Icon
+                name="i-lucide-loader-2"
+                class="w-5 h-5 mr-2 animate-spin"
+              />
+              Добавление...
+            </template>
+          </UButton>
+        </div>
       </form>
     </UCard>
     <UCard>
@@ -250,6 +283,7 @@ const passwordModal = ref({
 const search = ref("");
 const page = ref(1);
 const pageSize = 10;
+const isAddingUser = ref(false);
 const userInput = ref({
   login: "",
   password: "",
@@ -260,13 +294,16 @@ const userInput = ref({
 const teams = ref<{ id: number; name: string }[]>([]);
 const isLoadingTeams = ref(false);
 const teamsOptions = computed(() => {
-  return [
+  console.log("Пересчитываются опции команд, teams.value:", teams.value);
+  const options = [
     { label: "Без команды", value: null },
     ...teams.value.map((team) => ({
       label: team.name,
       value: team.id,
     })),
   ];
+  console.log("Готовые опции:", options);
+  return options;
 });
 const data = ref<User[]>([]);
 const toast = useToast();
@@ -343,6 +380,8 @@ async function addUser() {
   if (!userInput.value.login || !userInput.value.password) {
     return;
   }
+
+  isAddingUser.value = true;
   try {
     const response = await $fetch("/api/adduser", {
       method: "POST",
@@ -350,16 +389,20 @@ async function addUser() {
     });
     if (response && response.status === "success") {
       toast.add({
-        title: "Успех",
-        description: "Пользователь успешно добавлен",
+        title: "Успех! 🎉",
+        description: `Холодка "${userInput.value.login}" успешно добавлена в систему`,
         color: "success",
       });
       // Очищаем поля ввода после успешного добавления
       userInput.value.login = "";
       userInput.value.password = "";
+      userInput.value.teamId = null;
+
+      // Обновляем список пользователей
+      await loadListUser();
     } else if (response && response.status === "error") {
       toast.add({
-        title: "Ошибка",
+        title: "Ошибка ❌",
         description: response.message || "Ошибка при добавлении пользователя",
         color: "error",
       });
@@ -367,12 +410,13 @@ async function addUser() {
   } catch (error) {
     console.error("Ошибка при добавлении пользователя:", error);
     toast.add({
-      title: "Ошибка",
-      description: "Не удалось добавить пользователя",
+      title: "Ошибка ❌",
+      description:
+        "Не удалось добавить пользователя. Проверьте подключение к серверу.",
       color: "error",
     });
   } finally {
-    loadListUser();
+    isAddingUser.value = false;
   }
 }
 const loadListUser = async () => {
@@ -398,8 +442,11 @@ const loadTeams = async () => {
   isLoadingTeams.value = true;
   try {
     const response = await $fetch("/api/admin/teams/list");
+    console.log("Ответ API команд:", response);
     if (response && response.status === "success") {
       teams.value = response.teams || [];
+      console.log("Команды загружены:", teams.value);
+      console.log("Опции для селекта:", teamsOptions.value);
     }
   } catch (error) {
     console.error("Ошибка при загрузке списка команд:", error);
