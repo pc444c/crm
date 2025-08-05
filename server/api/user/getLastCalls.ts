@@ -1,10 +1,19 @@
 ﻿import { db } from "~~/server";
-import { records, tags } from "~~/server/schema";
-import { eq, sql, and, gte, lte, asc, desc } from "drizzle-orm";
+import { records, tags, userTeams, teamDatabases } from "~~/server/schema";
+import { eq, sql, and, gte, lte, asc, desc, inArray } from "drizzle-orm";
 import { defineEventHandler, readBody } from "h3";
 
 export default defineEventHandler(async (event) => {
   try {
+    const user = event.context.user;
+
+    if (!user) {
+      return {
+        success: false,
+        error: "Не авторизован",
+      };
+    }
+
     // Получаем параметры из тела запроса
     const body = await readBody(event);
     const {
@@ -21,17 +30,60 @@ export default defineEventHandler(async (event) => {
     if (!userId) {
       return {
         success: false,
-        error: "ID РїРѕР»СЊР·РѕРІР°С‚РµР»СЏ РЅРµ СѓРєР°Р·Р°РЅ",
+        error: "ID пользователя не указан",
       };
     }
 
-    // РџСЂРѕРІРµСЂРєР° РІР°Р»РёРґРЅРѕСЃС‚Рё ID РїРѕР»СЊР·РѕРІР°С‚РµР»СЏ
+    // Проверка валидности ID пользователя
     const userIdNum = parseInt(userId);
     if (isNaN(userIdNum)) {
       return {
         success: false,
-        error: "РќРµРєРѕСЂСЂРµРєС‚РЅС‹Р№ ID РїРѕР»СЊР·РѕРІР°С‚РµР»СЏ",
+        error: "Некорректный ID пользователя",
       };
+    }
+
+    // Проверяем доступ к базам данных через команды для обычных пользователей
+    let accessibleDatabaseIds: number[] = [];
+
+    if (user.role !== "admin") {
+      // Получаем команды пользователя
+      const userTeamsResult = await db
+        .select({ team_id: userTeams.team_id })
+        .from(userTeams)
+        .where(eq(userTeams.user_id, userIdNum));
+
+      if (userTeamsResult.length === 0) {
+        // Пользователь не состоит ни в одной команде
+        return {
+          success: true,
+          records: [],
+          total: 0,
+          message: "У вас нет доступа к базам данных",
+        };
+      }
+
+      const teamIds = userTeamsResult.map((result) => result.team_id);
+
+      // Получаем базы данных, к которым есть доступ через команды
+      const accessibleDatabasesResult = await db
+        .select({ database_id: teamDatabases.database_id })
+        .from(teamDatabases)
+        .where(inArray(teamDatabases.team_id, teamIds));
+
+      if (accessibleDatabasesResult.length === 0) {
+        // У команд пользователя нет доступа ни к одной базе данных
+        return {
+          success: true,
+          records: [],
+          total: 0,
+          message: "У ваших команд нет доступа к базам данных",
+        };
+      }
+
+      accessibleDatabaseIds = accessibleDatabasesResult.map(
+        (result) => result.database_id
+      );
     }
 
     // Получаем все доступные теги с их цветами
@@ -47,6 +99,11 @@ export default defineEventHandler(async (event) => {
 
     // Добавляем условие по user_id для показа только записей текущего пользователя
     conditions.push(eq(records.user_id, userIdNum));
+
+    // Добавляем фильтрацию по доступным базам данных для обычных пользователей
+    if (user.role !== "admin" && accessibleDatabaseIds.length > 0) {
+      conditions.push(inArray(records.database_id, accessibleDatabaseIds));
+    }
 
     // Р”РѕР±Р°РІР»СЏРµРј С„РёР»СЊС‚СЂ РїРѕ СЃС‚Р°С‚СѓСЃСѓ, РµСЃР»Рё СѓРєР°Р·Р°РЅ
     if (filterStatus) {

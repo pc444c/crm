@@ -8,7 +8,7 @@
         class="mb-4"
       />
       <form class="flex flex-row items-end gap-4">
-        <UFormField label="Логин" class="w-1/4">
+        <UFormField label="Логин" class="w-1/5">
           <UInput
             v-model="userInput.login"
             :rules="[(v) => !!v || 'Логин обязателен']"
@@ -19,7 +19,7 @@
             class="w-full"
           />
         </UFormField>
-        <UFormField label="Пароль" class="w-1/4">
+        <UFormField label="Пароль" class="w-1/5">
           <UInput
             v-model="userInput.password"
             :rules="[(v) => !!v || 'Пароль обязателен']"
@@ -29,6 +29,15 @@
             class="w-full"
           />
         </UFormField>
+        <UFormField label="Команда (необязательно)" class="w-1/5">
+          <USelect
+            v-model="userInput.teamId"
+            :options="teamsOptions"
+            placeholder="Выберите команду"
+            option-attribute="label"
+            value-attribute="value"
+          />
+        </UFormField>
         <UButton
           icon="i-lucide-rocket"
           size="md"
@@ -36,7 +45,7 @@
           @click.prevent="addUser"
           :disabled="!userInput.login || !userInput.password"
           variant="solid"
-          class="w-1/4 flex items-center justify-center"
+          class="w-1/5 flex items-center justify-center"
           >Добавить холодку</UButton
         >
       </form>
@@ -244,6 +253,20 @@ const pageSize = 10;
 const userInput = ref({
   login: "",
   password: "",
+  teamId: null as number | null,
+});
+
+// Для команд
+const teams = ref<{ id: number; name: string }[]>([]);
+const isLoadingTeams = ref(false);
+const teamsOptions = computed(() => {
+  return [
+    { label: "Без команды", value: null },
+    ...teams.value.map((team) => ({
+      label: team.name,
+      value: team.id,
+    })),
+  ];
 });
 const data = ref<User[]>([]);
 const toast = useToast();
@@ -370,8 +393,24 @@ function formatDate(dateStr: string) {
     minute: "2-digit",
   });
 }
+// Загружаем команды
+const loadTeams = async () => {
+  isLoadingTeams.value = true;
+  try {
+    const response = await $fetch("/api/admin/teams/list");
+    if (response && response.status === "success") {
+      teams.value = response.teams || [];
+    }
+  } catch (error) {
+    console.error("Ошибка при загрузке списка команд:", error);
+  } finally {
+    isLoadingTeams.value = false;
+  }
+};
+
 onMounted(() => {
   loadListUser();
+  loadTeams();
 });
 
 // Функция открытия модального окна для удаления

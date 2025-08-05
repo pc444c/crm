@@ -106,6 +106,39 @@ export const commentTemplates = pgTable("comment_templates", {
   updated_at: timestamp("updated_at", { precision: 3 }).defaultNow().notNull(),
 });
 
+// teams.ts - Таблица команд
+export const teams = pgTable("teams", {
+  id: serial("id").primaryKey(),
+  name: varchar("name", { length: 255 }).notNull(),
+  description: varchar("description", { length: 500 }),
+  created_at: timestamp("created_at", { precision: 3 }).defaultNow().notNull(),
+  updated_at: timestamp("updated_at", { precision: 3 }).defaultNow().notNull(),
+});
+
+// user_teams.ts - Таблица связи пользователей и команд
+export const userTeams = pgTable("user_teams", {
+  id: serial("id").primaryKey(),
+  user_id: integer("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  team_id: integer("team_id")
+    .notNull()
+    .references(() => teams.id, { onDelete: "cascade" }),
+  created_at: timestamp("created_at", { precision: 3 }).defaultNow().notNull(),
+});
+
+// team_databases.ts - Таблица связи команд и баз данных
+export const teamDatabases = pgTable("team_databases", {
+  id: serial("id").primaryKey(),
+  team_id: integer("team_id")
+    .notNull()
+    .references(() => teams.id, { onDelete: "cascade" }),
+  database_id: integer("database_id")
+    .notNull()
+    .references(() => databases.id, { onDelete: "cascade" }),
+  created_at: timestamp("created_at", { precision: 3 }).defaultNow().notNull(),
+});
+
 const connectionString = process.env.DATABASE_URL!;
 const client = postgres(connectionString);
 export const db = drizzle({ client });

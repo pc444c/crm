@@ -33,21 +33,32 @@ const publicRoutes = ["/api/login", "/api/verify-auth", "/api/logout"];
 
 export default defineEventHandler(async (event) => {
   const path = getRequestURL(event).pathname;
+  const isTeamPath = path.includes("/teams/");
 
-  // Добавим логирование для админских маршрутов
-  if (path.startsWith("/api/admin/")) {
+  // Расширенное логирование для маршрутов команд
+  if (path.includes("/teams")) {
     console.log("=== Auth Middleware ===");
     console.log("Path:", path);
+    console.log("Method:", event.method);
+    console.log("Headers:", getHeader(event, "cookie"));
     console.log("Cookies:", parseCookies(event));
   }
 
   // Пропускаем открытые маршруты
   if (publicRoutes.some((route) => path.startsWith(route))) {
+    console.log("Открытый маршрут, пропускаем аутентификацию:", path);
     return;
   }
 
   // Получаем токен из куки
   const token = getCookie(event, "auth_token");
+
+  if (isTeamPath) {
+    console.log(
+      "Auth token для маршрута teams:",
+      token ? "присутствует" : "отсутствует"
+    );
+  }
 
   // Если маршрут требует аутентификации
   if (
@@ -55,6 +66,7 @@ export default defineEventHandler(async (event) => {
     adminRoutes.some((route) => path.startsWith(route))
   ) {
     if (!token) {
+      console.error(`Отказ в доступе к ${path}: отсутствует токен авторизации`);
       throw createError({
         statusCode: 401,
         statusMessage: "Unauthorized",
@@ -64,13 +76,28 @@ export default defineEventHandler(async (event) => {
 
     // Проверяем токен
     const user = verifyToken(token);
+    const isTeamPath = path.includes("/teams");
 
     if (!user) {
+      console.error(
+        `Отказ в доступе к ${path}: недействительный или просроченный токен`
+      );
       throw createError({
         statusCode: 401,
         statusMessage: "Unauthorized",
         message: "Invalid or expired token",
       });
+    }
+
+    if (isTeamPath) {
+      console.log(
+        "Токен верифицирован для пользователя:",
+        user.login,
+        "с ID:",
+        user.id,
+        "роль:",
+        user.role
+      );
     }
 
     // Проверяем наличие пользователя в кэше
@@ -81,8 +108,17 @@ export default defineEventHandler(async (event) => {
     if (cachedUser && Date.now() - cachedUser.timestamp < USER_CACHE_TTL) {
       // Используем кэшированные данные
       dbUser = cachedUser.data;
+      if (isTeamPath) {
+        console.log("Пользователь найден в кэше:", dbUser);
+      }
     } else {
       // Если нет в кэше или кэш устарел, запрашиваем из БД
+      if (isTeamPath) {
+        console.log(
+          "Пользователь не найден в кэше, запрашиваем из БД по ID:",
+          user.id
+        );
+      }
       dbUser = await db
         .select()
         .from(users)
@@ -112,7 +148,17 @@ export default defineEventHandler(async (event) => {
 
     // Если маршрут требует прав администратора
     if (adminRoutes.some((route) => path.startsWith(route))) {
+      if (isTeamPath) {
+        console.log(
+          "Проверка прав администратора для маршрута команд, роль пользователя:",
+          user.role
+        );
+      }
+
       if (user.role !== "admin") {
+        console.error(
+          `Отказ в доступе к ${path}: недостаточно прав. Роль пользователя: ${user.role}, требуется admin`
+        );
         throw createError({
           statusCode: 403,
           statusMessage: "Forbidden",
@@ -122,11 +168,20 @@ export default defineEventHandler(async (event) => {
 
       // Если в заголовке явно указана роль admin, проверяем соответствие
       if (roleHeader === "admin" && user.role !== "admin") {
+        console.error(
+          `Отказ в доступе к ${path}: несоответствие ролей. Роль из заголовка: ${roleHeader}, роль пользователя: ${user.role}`
+        );
         throw createError({
           statusCode: 403,
           statusMessage: "Forbidden",
           message: "Admin privileges required for this request",
         });
+      }
+
+      if (isTeamPath) {
+        console.log(
+          "Проверка прав доступа пройдена успешно для маршрута команд"
+        );
       }
     }
 
@@ -141,5 +196,25 @@ export default defineEventHandler(async (event) => {
 
     // Добавляем пользователя в контекст события для использования в обработчиках
     event.context.user = user;
+
+    if (isTeamPath) {
+      console.log("Пользователь добавлен в контекст события:", user);
+    }
+  }
+
+  // Проверка доступа к базам данных для обычных пользователей
+  // Если пользователь уже аутентифицирован и не админ
+  if (event.context.user && event.context.user.role !== "admin") {
+    const path = getRequestURL(event).pathname;
+
+    // Проверяем запросы к базам данных
+    if (path.includes("/api/records/") || path.includes("/api/basesinfo")) {
+      console.log(
+        `Проверка доступа к базам данных через команды для пользователя ${event.context.user.id}`
+      );
+
+      // Здесь вызываем нашу отдельную middleware для проверки доступа
+      // Обработка будет продолжена в middleware/team-access.ts
+    }
   }
 });

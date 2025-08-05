@@ -59,6 +59,12 @@ const navigationItems = computed(() => [
     to: "/admin/statistics/timeline",
     active: route.path === "/admin/statistics/timeline",
   },
+  {
+    label: "Проверка номеров",
+    icon: "i-heroicons-phone",
+    to: "/admin/statistics/phone-lookup",
+    active: route.path === "/admin/statistics/phone-lookup",
+  },
 ]);
 
 // Автоматический редирект на overview если находимся на базовой странице

@@ -1,7 +1,7 @@
 import { db } from "../../index";
-import { records, tags } from "../../schema";
+import { records, userTeams, teamDatabases, tags } from "../../schema";
 import { defineEventHandler, readBody } from "h3";
-import { eq } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 import { verifyAuth } from "../../utils/jwt";
 
 // API для назначения перезвона
@@ -57,6 +57,52 @@ export default defineEventHandler(async (event) => {
         status: "error",
         message: "Запись не найдена",
       };
+    }
+
+    const currentRecord = recordResult[0];
+
+    // Проверяем доступ к базе данных через команды (если пользователь не админ)
+    if (userData.role !== "admin") {
+      // Получаем команды пользователя
+      const userTeamsResult = await db
+        .select({ team_id: userTeams.team_id })
+        .from(userTeams)
+        .where(eq(userTeams.user_id, userData.id));
+
+      if (userTeamsResult.length === 0) {
+        return {
+          status: "error",
+          message:
+            "У вас нет доступа к базам данных. Обратитесь к администратору.",
+        };
+      }
+
+      const teamIds = userTeamsResult.map((result) => result.team_id);
+
+      // Получаем базы данных, к которым есть доступ через команды
+      const accessibleDatabasesResult = await db
+        .select({ database_id: teamDatabases.database_id })
+        .from(teamDatabases)
+        .where(inArray(teamDatabases.team_id, teamIds));
+
+      if (accessibleDatabasesResult.length === 0) {
+        return {
+          status: "error",
+          message: "У ваших команд нет доступа к базам данных.",
+        };
+      }
+
+      const accessibleDatabaseIds = accessibleDatabasesResult.map(
+        (result) => result.database_id
+      );
+
+      // Проверяем, что запись принадлежит к доступной базе данных
+      if (!accessibleDatabaseIds.includes(currentRecord.database_id)) {
+        return {
+          status: "error",
+          message: "У вас нет доступа к этой базе данных.",
+        };
+      }
     }
 
     // Обновляем запись с новым тегом, временем перезвона и комментарием к перезвону

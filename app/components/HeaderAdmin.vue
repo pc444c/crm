@@ -54,6 +54,11 @@ const items = ref<NavigationMenuItem[][]>([
       to: "/admin/users",
     },
     {
+      label: "Команды",
+      icon: "i-lucide-users-2",
+      to: "/admin/teams",
+    },
+    {
       label: "Настройки",
       icon: "lucide:settings",
       children: [
@@ -75,7 +80,6 @@ const items = ref<NavigationMenuItem[][]>([
           description: "Управление шаблонами комментариев",
           to: "/admin/comment-templates",
         },
-
       ],
     },
     // {

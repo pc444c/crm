@@ -1,7 +1,7 @@
 import { db } from "../../index";
-import { records, tags } from "../../schema";
+import { records, tags, userTeams, teamDatabases } from "../../schema";
 import { defineEventHandler, readBody } from "h3";
-import { eq } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 import { verifyAuth } from "../../utils/jwt";
 
 // API для назначения тега записи
@@ -45,7 +45,7 @@ export default defineEventHandler(async (event) => {
 
     const tagName = tagResult[0].name;
 
-    // Получаем запись для проверки существования
+    // Получаем запись для проверки существования и доступа
     const recordResult = await db
       .select()
       .from(records)
@@ -59,21 +59,51 @@ export default defineEventHandler(async (event) => {
       };
     }
 
-    // Получаем текущую запись, чтобы узнать user_id
-    const currentRecord = await db
-      .select()
-      .from(records)
-      .where(eq(records.id, recordId))
-      .limit(1);
+    const currentRecord = recordResult[0];
 
-    if (currentRecord.length === 0) {
-      return {
-        status: "error",
-        message: "Запись не найдена",
-      };
+    // Проверяем доступ к базе данных через команды (если пользователь не админ)
+    if (userData.role !== "admin") {
+      // Получаем команды пользователя
+      const userTeamsResult = await db
+        .select({ team_id: userTeams.team_id })
+        .from(userTeams)
+        .where(eq(userTeams.user_id, userData.id));
+
+      if (userTeamsResult.length === 0) {
+        return {
+          status: "error",
+          message:
+            "У вас нет доступа к базам данных. Обратитесь к администратору.",
+        };
+      }
+
+      const teamIds = userTeamsResult.map((result) => result.team_id);
+
+      // Получаем базы данных, к которым есть доступ через команды
+      const accessibleDatabasesResult = await db
+        .select({ database_id: teamDatabases.database_id })
+        .from(teamDatabases)
+        .where(inArray(teamDatabases.team_id, teamIds));
+
+      if (accessibleDatabasesResult.length === 0) {
+        return {
+          status: "error",
+          message: "У ваших команд нет доступа к базам данных.",
+        };
+      }
+
+      const accessibleDatabaseIds = accessibleDatabasesResult.map(
+        (result) => result.database_id
+      );
+
+      // Проверяем, что запись принадлежит к доступной базе данных
+      if (!accessibleDatabaseIds.includes(currentRecord.database_id)) {
+        return {
+          status: "error",
+          message: "У вас нет доступа к этой базе данных.",
+        };
+      }
     }
-
-    // Запоминаем текущего пользователя, который работал с записью
     // const currentUserId = currentRecord[0].user_id;
 
     // Обновляем запись с новым тегом, комментарием и сохраняем ID пользователя, который его обработал

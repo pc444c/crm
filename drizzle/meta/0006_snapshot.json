@@ -1,0 +1,24 @@
+{
+  "id": "0006_teams_support",
+  "checksum": "1c0b639ac7ad4a026ef43d1fa033a3645e2bc49b5c196a06abb68536ccd0ed44",
+  "operations": [
+    {
+      "addTable": {
+        "table": "teams",
+        "schema": ""
+      }
+    },
+    {
+      "addTable": {
+        "table": "user_teams",
+        "schema": ""
+      }
+    },
+    {
+      "addTable": {
+        "table": "team_databases",
+        "schema": ""
+      }
+    }
+  ]
+}
