@@ -226,7 +226,7 @@ export default defineEventHandler(async (event) => {
           busiest_day:
             weeklyActivity
               .sort((a, b) => b.calls - a.calls)[0]
-              ?.day_name?.trim() || "Н/Д",
+              ?.day_name?.trim() || "",
         },
       },
     };

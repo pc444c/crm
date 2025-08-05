@@ -37,7 +37,7 @@
           >
             <span class="text-gray-400 text-sm mb-1">{{ field.label }}:</span>
             <span class="font-medium">{{
-              getFieldValue(field.key) || "Н/Д"
+              getFieldValue(field.key) || ""
             }}</span>
           </div>
         </div>

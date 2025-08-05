@@ -61,12 +61,6 @@
                 <h4 class="text-lg font-semibold text-blue-400">
                   📞 Телефон и контакты
                 </h4>
-                <div class="text-sm text-gray-400">
-                  {{ phoneRegion?.region }}
-                  <span v-if="phoneRegion?.operator" class="text-blue-400">
-                    ({{ phoneRegion.operator }})
-                  </span>
-                </div>
               </div>
 
               <div class="text-xl font-mono text-white">
@@ -99,6 +93,28 @@
                   WhatsApp
                 </UButton>
 
+                <!-- Проверка номера -->
+                <UButton
+                  v-if="!showPhoneInfo"
+                  color="info"
+                  icon="i-heroicons-magnifying-glass"
+                  size="sm"
+                  :loading="isCheckingPhone"
+                  @click="checkPhoneInline"
+                >
+                  Проверить номер
+                </UButton>
+
+                <UButton
+                  v-else
+                  color="neutral"
+                  icon="i-heroicons-x-mark"
+                  size="sm"
+                  @click="showPhoneInfo = false"
+                >
+                  Скрыть данные
+                </UButton>
+
                 <!-- Viber -->
                 <UButton
                   color="secondary"
@@ -121,9 +137,155 @@
                   Копировать
                 </UButton>
               </div>
+
+              <!-- Информация о телефоне (встроенная, а не в модальном окне) -->
+              <div
+                v-if="showPhoneInfo"
+                class="mt-3 border-t border-gray-600 pt-3"
+              >
+                <!-- Состояние загрузки -->
+                <div
+                  v-if="isCheckingPhone"
+                  class="flex items-center justify-center py-2"
+                >
+                  <UIcon
+                    name="i-heroicons-arrow-path"
+                    class="animate-spin mr-2"
+                  />
+                  <span>Проверка...</span>
+                </div>
+
+                <!-- Результаты проверки -->
+                <div v-else-if="phoneDetails" class="space-y-2">
+                  <div class="flex justify-between items-center mb-2">
+                    <div class="font-semibold text-sm text-gray-300">
+                      Информация о номере
+                    </div>
+                    <UBadge
+                      :color="phoneDetails.mobile ? 'info' : 'neutral'"
+                      size="sm"
+                    >
+                      {{ phoneDetails.mobile ? "Мобильный" : "Городской" }}
+                    </UBadge>
+                  </div>
+
+                  <div
+                    class="bg-neutral-800 border border-gray-700 rounded overflow-hidden"
+                  >
+                    <table class="w-full text-sm">
+                      <tbody class="divide-y divide-gray-700">
+                        <!-- Оператор -->
+                        <tr
+                          v-if="phoneDetails.oper"
+                          class="hover:bg-neutral-750"
+                        >
+                          <td class="px-2 py-1 whitespace-nowrap w-1/3">
+                            <div class="flex items-center">
+                              <UIcon
+                                name="i-heroicons-signal"
+                                class="mr-1 text-green-500"
+                              />
+                              <span class="text-gray-400">Оператор:</span>
+                            </div>
+                          </td>
+                          <td class="px-2 py-1">
+                            <span class="font-medium">{{
+                              phoneDetails.oper.brand || phoneDetails.oper.name
+                            }}</span>
+                            <a
+                              v-if="phoneDetails.oper.url"
+                              :href="'https://' + phoneDetails.oper.url"
+                              target="_blank"
+                              class="text-primary hover:underline text-xs ml-2"
+                            >
+                              <UIcon name="i-heroicons-link" class="inline" />
+                            </a>
+                          </td>
+                        </tr>
+
+                        <!-- Регион -->
+                        <tr
+                          v-if="phoneDetails.region"
+                          class="hover:bg-neutral-750"
+                        >
+                          <td class="px-2 py-1 whitespace-nowrap">
+                            <div class="flex items-center">
+                              <UIcon
+                                name="i-heroicons-map-pin"
+                                class="mr-1 text-blue-500"
+                              />
+                              <span class="text-gray-400">Регион:</span>
+                            </div>
+                          </td>
+                          <td class="px-2 py-1">
+                            {{ phoneDetails.region.name }}
+                            <span
+                              v-if="phoneDetails.region.okrug"
+                              class="text-xs text-gray-500 block"
+                            >
+                              {{ phoneDetails.region.okrug }}
+                            </span>
+                          </td>
+                        </tr>
+
+                        <!-- Автокод -->
+                        <tr
+                          v-if="phoneDetails.region?.autocod"
+                          class="hover:bg-neutral-750"
+                        >
+                          <td class="px-2 py-1 whitespace-nowrap">
+                            <div class="flex items-center">
+                              <UIcon
+                                name="i-heroicons-truck"
+                                class="mr-1 text-orange-500"
+                              />
+                              <span class="text-gray-400">Автокод:</span>
+                            </div>
+                          </td>
+                          <td class="px-2 py-1">
+                            {{ phoneDetails.region.autocod }}
+                          </td>
+                        </tr>
+
+                        <!-- Перенесенный номер -->
+                        <tr
+                          v-if="phoneDetails.oper_from"
+                          class="hover:bg-neutral-750"
+                        >
+                          <td class="px-2 py-1 whitespace-nowrap">
+                            <div class="flex items-center">
+                              <UIcon
+                                name="i-heroicons-arrows-right-left"
+                                class="mr-1 text-warning-500"
+                              />
+                              <span class="text-gray-400">Перенос:</span>
+                            </div>
+                          </td>
+                          <td class="px-2 py-1">
+                            <UBadge color="warning" size="xs"
+                              >Номер перенесен</UBadge
+                            >
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                <!-- Сообщение об ошибке -->
+                <div
+                  v-else-if="phoneCheckError"
+                  class="text-red-500 py-1 text-sm"
+                >
+                  <UIcon
+                    name="i-heroicons-exclamation-triangle"
+                    class="inline mr-1"
+                  />
+                  {{ phoneCheckError }}
+                </div>
+              </div>
             </div>
           </div>
-
           <!-- Разделитель -->
           <USeparator color="primary" label="Основная информация" />
 
@@ -171,7 +333,7 @@
                 >{{ field.label }}:</span
               >
               <span class="text-white">{{
-                getFieldValue(field.key) || "Н/Д"
+                getFieldValue(field.key) || ""
               }}</span>
             </div>
           </div>
@@ -208,6 +370,191 @@
       </template>
     </UCard>
   </div>
+
+  <!-- Модальное окно для отображения информации о номере -->
+  <UModal v-model:open="showPhoneDetails" title="Информация о номере телефона">
+    <template #body>
+      <div class="p-3">
+        <!-- Состояние загрузки -->
+        <div
+          v-if="isCheckingPhone"
+          class="flex items-center justify-center py-4"
+        >
+          <UIcon name="i-heroicons-arrow-path" class="animate-spin mr-2" />
+          <span>Проверка...</span>
+        </div>
+
+        <!-- Результаты проверки -->
+        <div v-else-if="phoneDetails" class="space-y-3">
+          <!-- Номер телефона - заголовок -->
+          <div class="flex items-center justify-between border-b pb-2 mb-2">
+            <div class="flex items-center">
+              <UIcon name="i-heroicons-phone" class="mr-2 text-primary" />
+              <span class="font-bold">{{ phoneDetails.phone }}</span>
+            </div>
+            <UBadge :color="phoneDetails.mobile ? 'blue' : 'gray'" size="sm">
+              {{ phoneDetails.mobile ? "Мобильный" : "Городской" }}
+            </UBadge>
+          </div>
+
+          <!-- Сводная информация (компактная таблица) -->
+          <div class="border dark:border-gray-700 rounded">
+            <table
+              class="min-w-full divide-y divide-gray-200 dark:divide-gray-700"
+            >
+              <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
+                <!-- Оператор -->
+                <tr v-if="phoneDetails.oper">
+                  <td class="px-3 py-2 whitespace-nowrap">
+                    <div class="flex items-center">
+                      <UIcon
+                        name="i-heroicons-signal"
+                        class="mr-2 text-sm text-green-500"
+                      />
+                      <span class="text-gray-500 dark:text-gray-400"
+                        >Оператор:</span
+                      >
+                    </div>
+                  </td>
+                  <td class="px-3 py-2 whitespace-nowrap">
+                    <span class="font-medium">{{
+                      phoneDetails.oper.brand || phoneDetails.oper.name
+                    }}</span>
+                    <a
+                      v-if="phoneDetails.oper.url"
+                      :href="'https://' + phoneDetails.oper.url"
+                      target="_blank"
+                      class="text-primary hover:underline text-xs ml-2"
+                    >
+                      <UIcon name="i-heroicons-link" class="inline" />
+                    </a>
+                  </td>
+                </tr>
+
+                <!-- Регион -->
+                <tr v-if="phoneDetails.region">
+                  <td class="px-3 py-2 whitespace-nowrap">
+                    <div class="flex items-center">
+                      <UIcon
+                        name="i-heroicons-map-pin"
+                        class="mr-2 text-sm text-blue-500"
+                      />
+                      <span class="text-gray-500 dark:text-gray-400"
+                        >Регион:</span
+                      >
+                    </div>
+                  </td>
+                  <td class="px-3 py-2">
+                    <span class="font-medium">{{
+                      phoneDetails.region.name
+                    }}</span>
+                    <span
+                      v-if="phoneDetails.region.okrug"
+                      class="text-xs text-gray-500 block"
+                    >
+                      {{ phoneDetails.region.okrug }}
+                    </span>
+                  </td>
+                </tr>
+
+                <!-- Автокод -->
+                <tr v-if="phoneDetails.region?.autocod">
+                  <td class="px-3 py-2 whitespace-nowrap">
+                    <div class="flex items-center">
+                      <UIcon
+                        name="i-heroicons-truck"
+                        class="mr-2 text-sm text-orange-500"
+                      />
+                      <span class="text-gray-500 dark:text-gray-400"
+                        >Автокод:</span
+                      >
+                    </div>
+                  </td>
+                  <td class="px-3 py-2 whitespace-nowrap">
+                    <span class="font-medium">{{
+                      phoneDetails.region.autocod
+                    }}</span>
+                  </td>
+                </tr>
+
+                <!-- MNC код -->
+                <tr v-if="phoneDetails.oper?.mnc">
+                  <td class="px-3 py-2 whitespace-nowrap">
+                    <div class="flex items-center">
+                      <UIcon
+                        name="i-heroicons-identification"
+                        class="mr-2 text-sm text-purple-500"
+                      />
+                      <span class="text-gray-500 dark:text-gray-400">Код:</span>
+                    </div>
+                  </td>
+                  <td class="px-3 py-2 whitespace-nowrap">
+                    <span class="font-medium">{{ phoneDetails.oper.mnc }}</span>
+                  </td>
+                </tr>
+
+                <!-- Перенесенный номер -->
+                <tr v-if="phoneDetails.oper_from">
+                  <td class="px-3 py-2 whitespace-nowrap">
+                    <div class="flex items-center">
+                      <UIcon
+                        name="i-heroicons-arrows-right-left"
+                        class="mr-2 text-sm text-amber-500"
+                      />
+                      <span class="text-gray-500 dark:text-gray-400"
+                        >Перенос:</span
+                      >
+                    </div>
+                  </td>
+                  <td class="px-3 py-2 whitespace-nowrap">
+                    <UBadge color="warning" size="xs">Номер перенесен</UBadge>
+                  </td>
+                </tr>
+
+                <!-- Дата обновления -->
+                <tr v-if="phoneDetails.upd">
+                  <td class="px-3 py-2 whitespace-nowrap">
+                    <div class="flex items-center">
+                      <UIcon
+                        name="i-heroicons-clock"
+                        class="mr-2 text-sm text-gray-500"
+                      />
+                      <span class="text-gray-500 dark:text-gray-400"
+                        >Обновлено:</span
+                      >
+                    </div>
+                  </td>
+                  <td class="px-3 py-2 whitespace-nowrap">
+                    <span class="text-xs text-gray-500">{{
+                      phoneDetails.upd
+                    }}</span>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Сообщение об ошибке -->
+        <div v-else-if="phoneCheckError" class="text-red-500 py-2 text-center">
+          <UIcon name="i-heroicons-exclamation-triangle" class="inline mr-1" />
+          {{ phoneCheckError }}
+        </div>
+
+        <!-- Нет данных -->
+        <div v-else class="text-gray-500 py-2 text-center">
+          Нет данных для отображения
+        </div>
+      </div>
+    </template>
+    <template #footer>
+      <div class="flex justify-end p-2">
+        <UButton color="neutral" @click="showPhoneDetails = false">
+          Закрыть
+        </UButton>
+      </div>
+    </template>
+  </UModal>
 
   <!-- Модальное окно для перезвона -->
   <UModal v-model:open="showCallbackModal" title="Назначить перезвон">
@@ -264,7 +611,7 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, computed } from "vue";
 import { useAuthStore } from "~/store/useAuth";
-import { getPhoneRegion, formatPhoneNumber } from "~/utils/phoneRegions";
+import { formatPhoneNumber } from "~/utils/phoneRegions";
 
 const auth = useAuthStore();
 const toast = useToast();
@@ -329,6 +676,39 @@ const noMoreRecords = ref(false);
 const recordEndMessage = ref("");
 const isEditingComment = ref(false);
 
+// Состояние для проверки номера телефона
+const isCheckingPhone = ref(false);
+const phoneDetails = ref<{
+  status: number;
+  phone: number;
+  mobile: boolean;
+  limit: number;
+  upd?: string;
+  oper?: {
+    id: number;
+    name: string;
+    brand?: string;
+    country: string;
+    mnc: number;
+    url?: string;
+  };
+  oper_from?: number;
+  region?: {
+    id: number;
+    name: string;
+    okrug: string;
+    autocod: string | number;
+    capital: number;
+    english: string;
+    iso: string;
+    country: string;
+    vid: number;
+  };
+} | null>(null);
+const phoneCheckError = ref<string | null>(null);
+const showPhoneDetails = ref(false);
+const showPhoneInfo = ref(false); // Флаг для отображения информации о телефоне непосредственно в карточке
+
 // Состояние для шаблона комментария и Toast UI Editor
 const defaultTemplate = ref<CommentTemplate | null>(null);
 // Удалены неиспользуемые переменные для Toast UI Editor
@@ -337,11 +717,7 @@ const defaultTemplate = ref<CommentTemplate | null>(null);
 const loadRecordHandler = ref<((event: Event) => void) | null>(null);
 
 // Computed properties для телефона и ссылок
-const phoneRegion = computed(() => {
-  return currentRecord.value?.phone
-    ? getPhoneRegion(currentRecord.value.phone)
-    : null;
-});
+// Удалено - getPhoneRegion больше не используется, т.к. теперь есть проверка через HTMLWeb API
 
 const formattedPhone = computed(() => {
   return currentRecord.value?.phone
@@ -811,6 +1187,56 @@ const copyPhone = async () => {
       description: "Не удалось скопировать номер",
       color: "error",
     });
+  }
+};
+
+// Удаляем проверку через модальное окно, оставляем только встроенный вариант
+// Функция checkPhone удалена, так как больше не используется
+
+// Проверка номера телефона через API HTMLWeb (встроенный вариант)
+const checkPhoneInline = async () => {
+  if (!cleanPhone.value) return;
+
+  // Сбрасываем предыдущие результаты
+  phoneDetails.value = null;
+  phoneCheckError.value = null;
+  isCheckingPhone.value = true;
+  showPhoneInfo.value = true;
+
+  try {
+    // Запрос к нашему API
+    const response = await $fetch<{
+      status: string;
+      data?: Record<string, any>;
+      message?: string;
+    }>(`/api/user/check-phone`, {
+      query: { phone: cleanPhone.value },
+    });
+
+    if (response.status === "success" && response.data) {
+      // Сохраняем данные о номере
+      phoneDetails.value = response.data;
+    } else {
+      phoneCheckError.value =
+        response.message || "Не удалось получить информацию о номере";
+
+      toast.add({
+        title: "Ошибка",
+        description: phoneCheckError.value || "",
+        color: "error",
+      });
+    }
+  } catch (error) {
+    console.error("Ошибка при проверке номера:", error);
+    phoneCheckError.value = "Не удалось выполнить запрос к API";
+
+    toast.add({
+      title: "Ошибка",
+      description: "Не удалось проверить номер телефона",
+      color: "error",
+    });
+  } finally {
+    isCheckingPhone.value = false;
   }
 };
 

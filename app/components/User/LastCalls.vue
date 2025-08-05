@@ -93,9 +93,9 @@
               />
               <span v-else class="text-white">Без статуса</span>
             </td>
-            <td class="px-4 py-3 text-white">{{ call.fio || "Н/Д" }}</td>
+            <td class="px-4 py-3 text-white">{{ call.fio || "" }}</td>
             <td class="px-4 py-3 font-mono text-white">
-              {{ call.phone || "Н/Д" }}
+              {{ call.phone || "" }}
             </td>
             <td class="px-4 py-3 text-white truncate max-w-[200px]">
               {{ call.description || "Нет комментария" }}
