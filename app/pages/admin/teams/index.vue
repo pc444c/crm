@@ -182,13 +182,22 @@
       <template #body>
         <form class="space-y-6" @submit.prevent="createTeam">
           <!-- Заголовок с иконкой -->
-          <div class="flex items-center gap-3 pb-4 border-b border-gray-200 dark:border-gray-700">
+          <div
+            class="flex items-center gap-3 pb-4 border-b border-gray-200 dark:border-gray-700"
+          >
             <div class="p-2 bg-green-100 dark:bg-green-900/30 rounded-lg">
-              <UIcon name="i-heroicons-plus-circle" class="text-green-600 dark:text-green-400 text-xl" />
+              <UIcon
+                name="i-heroicons-plus-circle"
+                class="text-green-600 dark:text-green-400 text-xl"
+              />
             </div>
             <div>
-              <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Новая команда</h3>
-              <p class="text-sm text-gray-500 dark:text-gray-400">Создайте команду для совместной работы</p>
+              <h3 class="text-lg font-semibold text-gray-900 dark:text-white">
+                Новая команда
+              </h3>
+              <p class="text-sm text-gray-500 dark:text-gray-400">
+                Создайте команду для совместной работы
+              </p>
             </div>
           </div>
 
@@ -204,7 +213,9 @@
                 class="w-full"
               />
               <template #help>
-                <span class="text-xs text-gray-500">Название должно быть понятным для всех участников</span>
+                <span class="text-xs text-gray-500"
+                  >Название должно быть понятным для всех участников</span
+                >
               </template>
             </UFormGroup>
 
@@ -218,31 +229,42 @@
                 class="w-full resize-none"
               />
               <template #help>
-                <span class="text-xs text-gray-500">Помогите участникам понять назначение команды</span>
+                <span class="text-xs text-gray-500"
+                  >Помогите участникам понять назначение команды</span
+                >
               </template>
             </UFormGroup>
           </div>
 
           <!-- Превью команды -->
           <div class="bg-gray-50 dark:bg-gray-800 rounded-lg p-4">
-            <h4 class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Превью команды:</h4>
+            <h4
+              class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+            >
+              Превью команды:
+            </h4>
             <div class="flex items-center gap-3">
               <div class="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
-                <UIcon name="i-heroicons-user-group" class="text-blue-600 dark:text-blue-400" />
+                <UIcon
+                  name="i-heroicons-user-group"
+                  class="text-blue-600 dark:text-blue-400"
+                />
               </div>
               <div>
                 <h5 class="font-medium text-gray-900 dark:text-white">
-                  {{ newTeam.name || 'Название команды' }}
+                  {{ newTeam.name || "Название команды" }}
                 </h5>
                 <p class="text-sm text-gray-500 dark:text-gray-400">
-                  {{ newTeam.description || 'Описание команды' }}
+                  {{ newTeam.description || "Описание команды" }}
                 </p>
               </div>
             </div>
           </div>
 
           <!-- Кнопки -->
-          <div class="flex justify-end gap-3 pt-4 border-t border-gray-200 dark:border-gray-700">
+          <div
+            class="flex justify-end gap-3 pt-4 border-t border-gray-200 dark:border-gray-700"
+          >
             <UButton
               variant="outline"
               size="lg"

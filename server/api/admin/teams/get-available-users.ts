@@ -1,6 +1,6 @@
 import { db } from "../../..";
 import { users, userTeams, teams } from "../../../schema";
-import { eq, notExists, and } from "drizzle-orm";
+import { eq, notExists, and, ne, ilike, or } from "drizzle-orm";
 
 export default defineEventHandler(async (event) => {
   const user = event.context.user;
@@ -17,6 +17,7 @@ export default defineEventHandler(async (event) => {
     // Получение ID команды из query параметров
     const query = getQuery(event);
     const teamId = query.teamId;
+    const search = (query.search as string) || "";
 
     if (!teamId || isNaN(Number(teamId))) {
       throw createError({
@@ -39,7 +40,30 @@ export default defineEventHandler(async (event) => {
       });
     }
 
-    // Получаем всех пользователей, не входящих в команду
+    // Получаем всех пользователей, не входящих в команду, исключая админов
+    let whereConditions = and(
+      ne(users.role, "admin"), // Исключаем админов
+      notExists(
+        db
+          .select()
+          .from(userTeams)
+          .where(
+            and(
+              eq(userTeams.team_id, Number(teamId)),
+              eq(userTeams.user_id, users.id)
+            )
+          )
+      )
+    );
+
+    // Добавляем поиск если есть search параметр
+    if (search && search.trim()) {
+      whereConditions = and(
+        whereConditions,
+        or(ilike(users.login, `%${search.trim()}%`))
+      );
+    }
+
     const availableUsers = await db
       .select({
         id: users.id,
@@ -48,19 +72,8 @@ export default defineEventHandler(async (event) => {
         created_at: users.created_at,
       })
       .from(users)
-      .where(
-        notExists(
-          db
-            .select()
-            .from(userTeams)
-            .where(
-              and(
-                eq(userTeams.team_id, Number(teamId)),
-                eq(userTeams.user_id, users.id)
-              )
-            )
-        )
-      );
+      .where(whereConditions)
+      .orderBy(users.login);
 
     return {
       status: "success",
