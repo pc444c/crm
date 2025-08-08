@@ -30,6 +30,17 @@ const items = ref<NavigationMenuItem[][]>([
       to: "/admin",
     },
     {
+      label: "Статистика команд",
+      icon: "i-lucide-users-2",
+      to: "/admin/team-statistics",
+    },
+    {
+      label: "Статистика звонков",
+      icon: "i-lucide-phone-call",
+      to: "/admin/team-statistics/team",
+    },
+  
+    {
       label: "Базы данных",
       icon: "i-lucide-database",
       // указываем вручную когда активен

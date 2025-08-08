@@ -1,0 +1,60 @@
+{
+  // 🔹 Увеличиваем память для TypeScript
+  "typescript.tsserver.maxTsServerMemory": 4096,
+
+  // 🔹 Отключаем логи TSServer
+  "typescript.tsserver.log": "off",
+
+  // 🔹 Используем Volar вместо Vetur
+  "volar.takeOverMode.enabled": true,
+
+  // 🔹 Улучшаем производительность поиска и индексации
+  "files.exclude": {
+    "**/node_modules": true,
+    "**/.nuxt": true,
+    "**/.output": true,
+    "**/dist": true,
+    "**/drizzle/migrations": true
+  },
+  "search.exclude": {
+    "**/node_modules": true,
+    "**/.nuxt": true,
+    "**/.output": true,
+    "**/dist": true,
+    "**/drizzle/migrations": true
+  },
+  "files.watcherExclude": {
+    "**/node_modules/**": true,
+    "**/.nuxt/**": true,
+    "**/.output/**": true,
+    "**/dist/**": true,
+    "**/drizzle/migrations/**": true
+  },
+
+  // 🔹 Отключаем Git и телеметрию
+  "git.enabled": false,
+  "telemetry.enableTelemetry": false,
+  "telemetry.enableCrashReporter": false,
+
+  // 🔹 Отключаем автообновления
+  "update.mode": "manual",
+  "extensions.autoUpdate": false,
+  "extensions.autoCheckUpdates": false,
+
+  // 🔹 Упрощаем редактор
+  "editor.formatOnSave": false,
+  "editor.codeActionsOnSave": {},
+  "eslint.enable": false,
+  "prettier.enable": false,
+
+  // 🔹 Ограничиваем количество открытых вкладок
+  "workbench.editor.limit.enabled": true,
+  "workbench.editor.limit.perEditorGroup": true,
+  "workbench.editor.limit.value": 10,
+
+  // 🔹 Терминал без очистки экрана при запуске dev-сервера
+  "terminal.integrated.scrollback": 1000,
+
+  // 🔹 Убираем фоновые проверки базы
+  "sqltools.useNodeRuntime": false
+}

@@ -174,7 +174,7 @@
           <div
             class="flex items-center gap-3 pb-4 border-b border-gray-200 dark:border-gray-700"
           >
-            <div class="p-2 bg-green-100 dark:bg-green-900/30 rounded-lg">
+            <div class="p-2 flex items-center justify-center bg-green-100 dark:bg-green-900/30 rounded-lg">
               <UIcon
                 name="i-heroicons-plus-circle"
                 class="text-green-600 dark:text-green-400 text-xl"
@@ -233,7 +233,7 @@
               Превью команды:
             </h4>
             <div class="flex items-center gap-3">
-              <div class="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
+              <div class="p-2 flex justify-center items-center bg-blue-100 dark:bg-blue-900/30 rounded-lg">
                 <UIcon
                   name="i-heroicons-user-group"
                   class="text-blue-600 dark:text-blue-400"
